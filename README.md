@@ -34,7 +34,7 @@ Right-click its house to send it to bed.
 
 ### Option 1 — Download the installer (easiest)
 
-1. Go to [Releases](https://github.com/Rudrafuture/mini-me/releases).
+1. Go to [Releases](https://github.com/Rudrafuture/Mini-Assistant/releases).
 2. Download `MiniMe-Setup-<version>.exe`.
 3. Run it and follow the prompts.
 
@@ -50,8 +50,8 @@ MiniMe installs per-user, so **no administrator rights are needed**.
 Requires [Node.js](https://nodejs.org/) 18 or newer.
 
 ```bash
-git clone https://github.com/Rudrafuture/mini-me.git
-cd mini-me
+git clone https://github.com/Rudrafuture/Mini-Assistant.git
+cd Mini-Assistant
 npm install
 npm start
 ```

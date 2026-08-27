@@ -24,12 +24,12 @@
   "private": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rudrafuture/mini-me.git"
+    "url": "https://github.com/Rudrafuture/Mini-Assistant.git"
   },
   "bugs": {
-    "url": "https://github.com/Rudrafuture/mini-me/issues"
+    "url": "https://github.com/Rudrafuture/Mini-Assistant/issues"
   },
-  "homepage": "https://github.com/Rudrafuture/mini-me#readme",
+  "homepage": "https://github.com/Rudrafuture/Mini-Assistant#readme",
   "engines": {
     "node": ">=18"
   },
