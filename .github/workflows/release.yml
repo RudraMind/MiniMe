@@ -27,7 +27,9 @@ jobs:
         run: npm ci
 
       - name: Build Windows installer
-        run: npm run dist
+        # --publish never: electron-builder auto-publishes when a tag is present
+        # and would need its own GH_TOKEN. Releasing is handled by the step below.
+        run: npm run dist -- --publish never
 
       - name: Upload installer as workflow artifact
         uses: actions/upload-artifact@v4
