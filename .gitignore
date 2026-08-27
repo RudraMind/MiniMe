@@ -1,0 +1,17 @@
+node_modules/
+dist/
+out/
+build/
+
+# Local scratch / debug renders from sprite verification
+debug_*.png
+test_*.png
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.env
+.env.local

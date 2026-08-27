@@ -1,0 +1,16 @@
+export const ANIMATIONS = {
+  idle:        { frames: ['stand_01'],                                          ms: 1000, loop: true  },
+  walk:        { frames: ['walk_01','walk_02','walk_03','walk_04','walk_05'],    ms: 110,  loop: true  },
+  wave:        { frames: ['wave_01','wave_02','wave_03','wave_02'],              ms: 180,  loop: false },
+  stretch:     { frames: ['stretch_01','stretch_02','stretch_03'],               ms: 700,  loop: true  },
+  drink:       { frames: ['drink_01','drink_02','drink_03'],                    ms: 550,  loop: true  },
+  splash:      { frames: ['splash_01','splash_02','splash_03'],                 ms: 400,  loop: false },
+  dance:       { frames: ['dance_01','dance_02','dance_03','dance_04'],         ms: 160,  loop: true  },
+  glasses:     { frames: ['glasses_01','glasses_02','glasses_03'],             ms: 300,  loop: false },
+  thumbsup:    { frames: ['thumbsup_01'],                                       ms: 1200, loop: false },
+  point:       { frames: ['point_01'],                                         ms: 1200, loop: false },
+  crossed:     { frames: ['crossed_01'],                                       ms: 1500, loop: false },
+  phone:       { frames: ['phone_01'],                                         ms: 2000, loop: false },
+  jump:        { frames: ['jump_01'],                                          ms: 500,  loop: false },
+  sit:         { frames: ['sit_01'],                                           ms: 2000, loop: false },
+};

@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <h1>MiniMe Settings</h1>
+
+  <label>Stretch reminder every (minutes)
+    <input type="number" id="stretchIntervalMin" min="1" />
+  </label>
+
+  <label>Water reminder every (minutes)
+    <input type="number" id="waterIntervalMin" min="1" />
+  </label>
+
+  <label>Water overlay length (seconds)
+    <input type="number" id="overlaySeconds" min="1" />
+  </label>
+
+  <label>Speech bubble duration (ms)
+    <input type="number" id="bubbleMs" min="500" step="500" />
+  </label>
+
+  <label>Walk speed (px/tick)
+    <input type="number" id="walkSpeed" min="0.1" step="0.1" />
+  </label>
+
+  <label class="checkbox">
+    <input type="checkbox" id="startWithWindows" />
+    Start with Windows
+  </label>
+
+  <div class="swatch-group">
+    <span class="swatch-label">Shirt color</span>
+    <div class="swatches" id="shirtSwatches"></div>
+  </div>
+
+  <div class="swatch-group">
+    <span class="swatch-label">Pants color</span>
+    <div class="swatches" id="pantSwatches"></div>
+  </div>
+
+  <label>Lane orientation
+    <select id="laneOrientation">
+      <option value="horizontal">Horizontal (top edge)</option>
+      <option value="vertical">Vertical (right edge)</option>
+    </select>
+  </label>
+
+  <fieldset>
+    <legend>Quiet hours (auto-sleep)</legend>
+    <label class="checkbox">
+      <input type="checkbox" id="quietEnabled" />
+      Enabled
+    </label>
+    <label>Start
+      <input type="time" id="quietStart" />
+    </label>
+    <label>End
+      <input type="time" id="quietEnd" />
+    </label>
+  </fieldset>
+
+  <div id="status"></div>
+  <button id="save">Save</button>
+
+  <script type="module" src="settings.js"></script>
+
+</body>
+</html>

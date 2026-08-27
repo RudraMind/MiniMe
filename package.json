@@ -1,0 +1,87 @@
+{
+  "name": "mini-me",
+  "version": "1.0.0",
+  "description": "A pixel-art desktop companion for Windows that walks your screen edge and nudges you to stretch and drink water.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "slice": "node tools/slice-sheet.js",
+    "placeholders": "node tools/make-placeholders.js",
+    "assets": "npm run slice && npm run placeholders",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --win --dir"
+  },
+  "keywords": [
+    "electron",
+    "desktop-pet",
+    "pixel-art",
+    "windows",
+    "reminders",
+    "health"
+  ],
+  "author": "Rudrafuture",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rudrafuture/mini-me.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Rudrafuture/mini-me/issues"
+  },
+  "homepage": "https://github.com/Rudrafuture/mini-me#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.0",
+    "to-ico": "^1.1.5"
+  },
+  "build": {
+    "appId": "com.rudrafuture.minime",
+    "productName": "MiniMe",
+    "artifactName": "MiniMe-Setup-${version}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MiniMe"
+    },
+    "files": [
+      "main.js",
+      "state.js",
+      "timers.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/pal/**/*",
+      "assets/house/**/*",
+      "assets/icon.ico",
+      "assets/icon.png",
+      "assets/tray.png",
+      "package.json",
+      "!assets/reference/**",
+      "!tools/**",
+      "!dist/**",
+      "!**/*.md"
+    ]
+  }
+}
