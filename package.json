@@ -19,17 +19,17 @@
     "reminders",
     "health"
   ],
-  "author": "Rudrafuture",
+  "author": "RudraMind",
   "license": "MIT",
   "private": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rudrafuture/Mini-Assistant.git"
+    "url": "https://github.com/RudraMind/Mini-Assistant.git"
   },
   "bugs": {
-    "url": "https://github.com/Rudrafuture/Mini-Assistant/issues"
+    "url": "https://github.com/RudraMind/Mini-Assistant/issues"
   },
-  "homepage": "https://github.com/Rudrafuture/Mini-Assistant#readme",
+  "homepage": "https://github.com/RudraMind/Mini-Assistant#readme",
   "engines": {
     "node": ">=18"
   },
