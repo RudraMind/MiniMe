@@ -44,7 +44,7 @@ and drink water. Right-click the house to send them to bed.
 
 ### Option 1 — Download the installer (easiest)
 
-1. Go to [Releases](https://github.com/RudraMind/Mini-Assistant/releases).
+1. Go to [Releases](https://github.com/RudraMind/MiniMe/releases).
 2. Download `MiniMe-Setup-<version>.exe`.
 3. Run it and follow the prompts.
 
@@ -61,8 +61,8 @@ Requires [Node.js](https://nodejs.org/) 18 or newer ([download the LTS
 version](https://nodejs.org/) and click through the installer).
 
 ```bash
-git clone https://github.com/RudraMind/Mini-Assistant.git
-cd Mini-Assistant
+git clone https://github.com/RudraMind/MiniMe.git
+cd MiniMe
 npm install
 npm start
 ```
