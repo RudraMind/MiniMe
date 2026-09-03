@@ -6,6 +6,7 @@ const houseEl = document.getElementById('house');
 const houseImg = document.getElementById('houseImg');
 const bubbleEl = document.getElementById('bubble');
 const zzzEl = document.getElementById('zzz');
+const boneEl = document.getElementById('bone');
 
 const HOUSE_BASE = '../assets/house/';
 const PAL_W = 72;
@@ -84,7 +85,11 @@ function renderLoop(ts) {
   const frame = anim.frames[Math.min(frameIndex, anim.frames.length - 1)];
   const src = frameSrcMap[frame];
   if (src) palEl.src = src;
-  palEl.style.transform = `scaleX(${facing < 0 ? -1 : 1})`;
+  // Mirror only when travel direction disagrees with the art's own facing.
+  // Assuming every sheet faces right made the left-facing characters walk
+  // backwards and appear to turn around as they changed direction.
+  const nativeSign = getCharacter(characterKey).nativeFacing === 'right' ? 1 : -1;
+  palEl.style.transform = `scaleX(${facing === nativeSign ? 1 : -1})`;
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);
@@ -233,6 +238,15 @@ window.pixelpal.on('pal:state', (s) => {
     bubbleEl.style.top = `${Math.max(s.y - 44, 4)}px`;
   } else {
     bubbleEl.classList.add('hidden');
+  }
+
+  // The toy sits where the game started; the character bounces around it.
+  if (s.playAnchor) {
+    boneEl.style.left = `${s.playAnchor.x + PAL_W / 2 - 12}px`;
+    boneEl.style.top = `${s.playAnchor.y + PAL_H - 20}px`;
+    boneEl.classList.remove('hidden');
+  } else {
+    boneEl.classList.add('hidden');
   }
 
   palEl.classList.toggle('hidden', s.state === 'SLEEPING');

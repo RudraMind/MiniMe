@@ -10,6 +10,9 @@ export const CHARACTERS = {
     label: 'Raj',
     defaultName: 'Chotu',
     dir: '../assets/pal/',
+    // Which way the source art faces. The renderer mirrors from travel
+    // direction, so getting this wrong makes the character moonwalk.
+    nativeFacing: 'left',
     // Raj's art is a plain shirt + trousers, so the outfit recolour applies.
     recolorable: true,
     // Idle flourishes this character can actually perform.
@@ -38,6 +41,7 @@ export const CHARACTERS = {
     label: 'Hanu',
     defaultName: 'Hanu',
     dir: '../assets/hanu/',
+    nativeFacing: 'left',
     // Hanu's outfit is saturated orange and gold; the recolour targets
     // near-neutral garment pixels and would do nothing useful here.
     recolorable: false,
@@ -79,6 +83,7 @@ CHARACTERS.boy = {
   label: 'Boy',
   defaultName: 'Bud',
   dir: '../assets/boy/',
+  nativeFacing: 'left',
   // Striped shirt and denim shorts — the neutral-garment recolour would
   // misfire on them, so it's off.
   recolorable: false,
@@ -90,6 +95,7 @@ CHARACTERS.girl = {
   label: 'Girl',
   defaultName: 'Pip',
   dir: '../assets/girl/',
+  nativeFacing: 'left',
   recolorable: false,
   flourishes: { sit: 3, wave: 2, jump: 2, stretch: 1 },
   animations: kidAnimations('girl'),
@@ -99,8 +105,9 @@ CHARACTERS.dog = {
   label: 'Dog',
   defaultName: 'Scout',
   dir: '../assets/dog/',
+  nativeFacing: 'right',
   recolorable: false,
-  flourishes: { sit: 3, wave: 2, lie: 2 },
+  flourishes: { sit: 2, wave: 2, lie: 2, play: 4 },
   animations: {
     // A dog at rest sits, rather than standing to attention.
     idle:    { frames: ['dog_sit_01'], ms: 1200, loop: true },
@@ -116,6 +123,9 @@ CHARACTERS.dog = {
     // No stretch pose exists, so exercise time is an energetic bound.
     stretch: { frames: ['dog_run_01', 'dog_run_02'], ms: 220, loop: true },
     jump:    { frames: ['dog_run_02'], ms: 600, loop: false },
+    // Bouncing around the bone — quick, and a different frame order to the
+    // run cycle so play doesn't just look like running.
+    play:    { frames: ['dog_run_02', 'dog_run_01', 'dog_run_03', 'dog_run_01'], ms: 130, loop: true },
     drink:   { frames: ['dog_drink_01'], ms: 900, loop: true },
     sit:     { frames: ['dog_sit_02'], ms: 2000, loop: false },
     lie:     { frames: ['dog_lie_01'], ms: 2500, loop: false },

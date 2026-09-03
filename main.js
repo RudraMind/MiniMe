@@ -105,7 +105,7 @@ const CHARACTERS = {
   dog: {
     label: 'Dog',
     defaultName: 'Scout',
-    flourishes: { sit: 3, wave: 2, lie: 2 },
+    flourishes: { sit: 2, wave: 2, lie: 2, play: 4 },
     moods: { phone: 'lie', crossed: 'sit', wave: 'wave', dance: 'run', point: 'wave' },
   },
 };
@@ -696,6 +696,9 @@ function startTickLoop() {
     const h = housePosition();
     s.houseX = h.x - workArea.x;
     s.houseY = h.y - workArea.y;
+    if (s.playAnchor) {
+      s.playAnchor = { x: s.playAnchor.x - workArea.x, y: s.playAnchor.y - workArea.y };
+    }
     sendTo(chotuWindow, 'pal:state', s);
 
     // electron-store writes to disk synchronously on every set — only persist
@@ -886,6 +889,7 @@ function checkRequiredAssets() {
     path.join(__dirname, 'assets', 'boy', 'boy_wave_01.png'),
     path.join(__dirname, 'assets', 'girl', 'girl_wave_01.png'),
     path.join(__dirname, 'assets', 'dog', 'dog_sit_01.png'),
+    path.join(__dirname, 'assets', 'props', 'bone.png'),
   ];
   const missing = required.filter((p) => !fs.existsSync(p));
   if (missing.length === 0) return true;

@@ -76,6 +76,7 @@
       "assets/house/**/*",
       "assets/hanu/**/*",
       "assets/dog/**/*",
+      "assets/props/**/*",
       "assets/girl/**/*",
       "assets/boy/**/*",
       "assets/icon.ico",

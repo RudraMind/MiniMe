@@ -15,6 +15,7 @@ const STATES = Object.freeze({
   DRAGGED: 'DRAGGED',
   WORKING: 'WORKING', // sitting at the work spot during a focus session
   BREAK: 'BREAK',     // stretching between focus sessions
+  PLAYING: 'PLAYING', // bouncing around a dropped toy (the dog's idle game)
 });
 
 const HOUSE = Object.freeze({ CLOSED: 'closed', OPEN: 'open', NIGHT: 'night' });
@@ -34,6 +35,12 @@ const DRAG_HOLD_MS = 8000;
 // Only flip the sprite when there's meaningful horizontal travel. The art has
 // no up/down poses, so near-vertical movement must not cause facing flicker.
 const FACING_EPSILON_PX = 1.5;
+
+// Idle play: short hops around a toy dropped where the game started.
+const PLAY_RADIUS_PX = 70;
+const PLAY_SPEED_FACTOR = 1.25;
+const PLAY_MIN_HOPS = 3;
+const PLAY_MAX_HOPS = 6;
 
 // How long a flourish plays before returning to idle (ms).
 const FLOURISH_MS = {
@@ -70,7 +77,11 @@ function randRange(min, max) {
 }
 
 function weightedPick(weights) {
-  const entries = Object.entries(weights);
+  const entries = Object.entries(weights || {});
+  // A character with no flourishes is valid; returning null makes the caller
+  // simply skip the flourish instead of throwing inside the tick loop, which
+  // would take the whole app down.
+  if (!entries.length) return null;
   const total = entries.reduce((s, [, w]) => s + w, 0);
   let r = Math.random() * total;
   for (const [key, w] of entries) {
@@ -123,6 +134,28 @@ class PalState extends EventEmitter {
 
     this._focusActive = false;
     this._pendingWork = false;
+
+    this._playAnchor = null;
+    this._playHopsLeft = 0;
+  }
+
+  // The toy stays put and the character bounces around it.
+  _beginPlay() {
+    this.state = STATES.PLAYING;
+    this.animation = 'play';
+    this._playAnchor = { x: this.x, y: this.y };
+    this._playHopsLeft = PLAY_MIN_HOPS + Math.floor(Math.random() * (PLAY_MAX_HOPS - PLAY_MIN_HOPS + 1));
+    this._pickPlayHop();
+  }
+
+  _pickPlayHop() {
+    const a = this._playAnchor;
+    const p = this._clamp(
+      a.x + randRange(-PLAY_RADIUS_PX, PLAY_RADIUS_PX),
+      a.y + randRange(-PLAY_RADIUS_PX, PLAY_RADIUS_PX)
+    );
+    this.targetX = p.x;
+    this.targetY = p.y;
   }
 
   get focusActive() {
@@ -298,7 +331,8 @@ class PalState extends EventEmitter {
     const interruptible = this.state === STATES.IDLE
       || this.state === STATES.WALKING
       || this.state === STATES.FOLLOWING
-      || this.state === STATES.RESTING;
+      || this.state === STATES.RESTING
+      || this.state === STATES.PLAYING;
     if (!interruptible) return false;
     if (this._pendingReminder && this._pendingReminder !== kind) {
       if (!this._queuedReminder) this._queuedReminder = kind;
@@ -354,6 +388,8 @@ class PalState extends EventEmitter {
   _arriveIdle() {
     this.state = STATES.IDLE;
     this.animation = 'idle';
+    this._playAnchor = null;
+    this._playHopsLeft = 0;
     this.targetX = null;
     this.targetY = null;
     this._flourish = null;
@@ -435,9 +471,16 @@ class PalState extends EventEmitter {
             this._beginWalk(p.x, p.y);
           } else {
             this._flourish = weightedPick(this.cfg.flourishes);
-            this.animation = this._flourish;
-            this._phaseTimer = FLOURISH_MS[this._flourish] ?? FLOURISH_DEFAULT_MS;
-            this._flourishActive = true;
+            if (this._flourish === 'play') {
+              this._beginPlay();
+              this._idleTimer = randRange(this.cfg.idleMinMs, this.cfg.idleMaxMs);
+              break;
+            }
+            if (this._flourish) {
+              this.animation = this._flourish;
+              this._phaseTimer = FLOURISH_MS[this._flourish] ?? FLOURISH_DEFAULT_MS;
+              this._flourishActive = true;
+            }
           }
           this._idleTimer = randRange(this.cfg.idleMinMs, this.cfg.idleMaxMs);
         } else if (this._flourishActive) {
@@ -447,6 +490,15 @@ class PalState extends EventEmitter {
             this._flourish = null;
             this.animation = 'idle';
           }
+        }
+        break;
+      }
+
+      case STATES.PLAYING: {
+        if (this._moveToward(this.targetX, this.targetY, this.cfg.walkSpeed * PLAY_SPEED_FACTOR, dtMs)) {
+          this._playHopsLeft -= 1;
+          if (this._playHopsLeft <= 0) this._arriveIdle();
+          else this._pickPlayHop();
         }
         break;
       }
@@ -560,6 +612,7 @@ class PalState extends EventEmitter {
       animation: this.animation,
       bubbleText: this.bubbleText,
       houseState: this.houseState,
+      playAnchor: this._playAnchor,
     };
   }
 }

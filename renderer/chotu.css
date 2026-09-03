@@ -76,3 +76,15 @@ html, body { width: 100%; height: 100%; background: transparent; overflow: hidde
   20%  { opacity: 0.9; }
   100% { transform: translateX(-50%) translateY(-26px) scale(1.3); opacity: 0; }
 }
+
+/* The toy the dog plays with while idling. */
+#bone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
