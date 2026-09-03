@@ -10,23 +10,33 @@ Right-click its house to send it to bed.
 
 ## Features
 
-- **Lives on your screen edge** — walks a lane along the top (or right) edge,
-  above your windows, without stealing clicks from anything underneath.
-- **Stretch reminders** — every 60 minutes (configurable) it walks to the
-  center and holds up a speech bubble. A nudge only; it never blocks you.
+- **Roams your whole desktop** — wanders anywhere on screen, above your
+  windows, without stealing clicks from anything underneath.
+- **Focus sessions (body doubling)** — start one and they sit down and work
+  beside you for 25 minutes with all reminders paused, then stand up and
+  stretch with you at the break, repeating until you stop. Drag them anywhere
+  while working to move their spot.
+- **Follow your cursor** — optional: they walk slowly toward your pointer and
+  sit down to relax when it stops moving.
+- **React to your apps** — optional: they strike a pose suited to whatever app
+  you switch to. Reads only the app's *name* — never window titles, page names,
+  or filenames — and nothing leaves your computer.
+- **Stretch reminders** — every 60 minutes (configurable) they walk to the
+  center and hold up a speech bubble. A nudge only; it never blocks you.
 - **Water reminders** — every 45 minutes (configurable) a full-screen pause
   appears with a 10-second countdown. Esc or **Skip** dismisses it instantly,
   and it closes itself if you Alt-Tab away. It never blocks Ctrl+Alt+Del,
   Alt+Tab, or Task Manager.
-- **Sleep / wake** — right-click the house to send MiniMe home. It walks all
-  the way there, goes inside, and reminder timers pause until you wake it.
+- **A house you can put anywhere** — drag it wherever you like; the spot is
+  remembered. Right-click it to send them to bed, which pauses reminders.
+- **Drag them around** — pick them up and drop them anywhere; they hold that
+  spot for a few seconds before carrying on.
+- **Give them a name** — used throughout the menus. Defaults to `Raj`.
 - **Outfit colors** — pick a shirt and pants color (red, blue, yellow, black,
   green, orange, or the original art) from Settings.
-- **Lane orientation** — run the lane horizontally across the top edge, or
-  vertically down the right edge with the house at the top.
 - **Quiet hours** — optional auto-sleep overnight (off by default).
-- **Idle personality** — between walks it dances, checks its phone, crosses
-  its arms, gives a thumbs up, and so on.
+- **Idle personality** — between walks they dance, check their phone, cross
+  their arms, give a thumbs up, and so on.
 
 ---
 
@@ -67,12 +77,16 @@ MiniMe appears on the top edge of your primary monitor and starts wandering.
 
 | Action | How |
 |---|---|
-| Open settings | Right-click MiniMe or the house → **Settings…**, or use the tray icon |
-| Wave | Left-click MiniMe |
+| Open settings | Right-click them or the house → **Settings…**, or use the tray icon |
+| Wave | Left-click them |
+| Move them | Drag them anywhere |
+| Move the house | Drag the house anywhere |
+| Start / stop a focus session | Right-click them, or the tray icon |
 | Send to bed | Right-click the house → **Go to sleep** |
 | Wake up | Right-click the house → **Wake up** |
 | Trigger a reminder now | Tray icon → **Drink now** / **Stretch now** |
-| Hide MiniMe | Tray icon → **Hide pal** |
+| Restart the app | Tray icon or right-click → **Restart** |
+| Hide them | Tray icon → **Hide** |
 | Quit | Tray icon → **Quit** |
 
 Closing windows does **not** quit MiniMe — it lives in the system tray. Use
@@ -81,9 +95,10 @@ Closing windows does **not** quit MiniMe — it lives in the system tray. Use
 ### Settings
 
 Everything is configurable from the Settings window and persists across
-restarts: reminder intervals, water overlay length, speech bubble duration,
-walk speed, shirt and pants color, lane orientation, quiet hours, and whether
-MiniMe starts with Windows.
+restarts: their name, focus session and break lengths, reminder intervals,
+water overlay length, speech bubble duration, walk speed, shirt and pants
+color, cursor-following, app-based moods, quiet hours, and whether MiniMe
+starts with Windows.
 
 Settings are stored in `%APPDATA%\mini-me\config.json`.
 
@@ -118,6 +133,7 @@ the source sheet at `assets/reference/spritesheet.png`.
 ```bash
 npm install sharp to-ico   # optional deps, only needed for this step
 npm run assets             # re-slices sprites + regenerates icons
+node tools/slice-house.js  # re-slices the 3 house states
 ```
 
 The slicer cuts 31 poses out of the sheet by connected-component detection. If
@@ -147,8 +163,9 @@ state.js           pal state machine — pure logic, no Electron imports
 timers.js          pausable stretch/water schedulers
 preload.js         contextBridge IPC surface
 renderer/          pet, overlay, and settings UIs (plain HTML/CSS/JS)
-tools/             sprite slicer + icon generator (optional, dev only)
+tools/             sprite/house slicers + icon generator (optional, dev only)
 assets/pal/        the 31 generated sprite frames
+assets/house/      the 3 generated house states
 BUILD_LOG.md       build notes, corner cases, and troubleshooting history
 ```
 

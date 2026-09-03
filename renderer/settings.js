@@ -1,6 +1,9 @@
 import { COLOR_SWATCHES } from './recolor.js';
 
-const fields = ['stretchIntervalMin', 'waterIntervalMin', 'overlaySeconds', 'bubbleMs', 'walkSpeed'];
+const fields = [
+  'stretchIntervalMin', 'waterIntervalMin', 'overlaySeconds', 'bubbleMs', 'walkSpeed',
+  'focusSessionMin', 'focusBreakMin',
+];
 const COLOR_KEYS = ['default', ...Object.keys(COLOR_SWATCHES)];
 
 let shirtColor = 'default';
@@ -37,7 +40,9 @@ async function load() {
   buildSwatches('shirtSwatches', shirtColor, (key) => (shirtColor = key));
   buildSwatches('pantSwatches', pantColor, (key) => (pantColor = key));
 
-  document.getElementById('laneOrientation').value = cfg.laneOrientation || 'horizontal';
+  document.getElementById('palName').value = cfg.palName || 'Raj';
+  document.getElementById('followCursor').checked = !!cfg.followCursor;
+  document.getElementById('focusMoods').checked = !!cfg.focusMoods;
 }
 
 document.getElementById('save').addEventListener('click', async () => {
@@ -51,7 +56,10 @@ document.getElementById('save').addEventListener('click', async () => {
   };
   patch.shirtColor = shirtColor;
   patch.pantColor = pantColor;
-  patch.laneOrientation = document.getElementById('laneOrientation').value;
+  const name = document.getElementById('palName').value.trim();
+  patch.palName = name || 'Raj';
+  patch.followCursor = document.getElementById('followCursor').checked;
+  patch.focusMoods = document.getElementById('focusMoods').checked;
   await window.pixelpal.invoke('config:set', patch);
   const status = document.getElementById('status');
   status.textContent = 'Saved.';

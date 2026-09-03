@@ -314,12 +314,51 @@ this. This is purely a local-Windows-machine problem.
 
 ---
 
-## 6. Quick reference: rebuilding assets after art changes
+## 6. Corner cases from the 2D / free-roam rework
+
+Moving from a 1D lane to whole-screen roaming changed the risk profile — the
+pet window went from a 140px strip to covering the entire work area, which
+turned several previously-harmless issues into serious ones.
+
+| # | Issue | Why it matters | Fix |
+|---|---|---|---|
+| 1 | **The whole screen could stop accepting clicks.** Hover tracking is deliberately skipped during a drag, so `hovering` stayed `true` after dropping the pal with the cursor elsewhere — leaving the window non-click-through. | Harmless as a 140px strip; with a full-screen window it swallows *every* click on the desktop, taskbar, and other apps until the next mousemove. | `finishDrag()` in `renderer/pet.js` re-evaluates hover immediately using the last known cursor position. |
+| 2 | **Dragging the house wrote to disk on every mousemove.** `electron-store` persists synchronously. | Measured at ~1.5ms per write; a 3-second drag at ~90Hz is ~270 writes ≈ **408ms of blocking disk I/O** on the same thread as the 16ms animation tick — visible stutter plus pointless SSD wear. | Position is held in memory (`liveHousePos`) during the drag and written once on drop (`commitHousePos()`). |
+| 3 | **Holding the pal still for 1.5s dropped it.** The drag watchdog only re-armed on drag *messages*, and holding the mouse still produces none. | The watchdog couldn't distinguish "user is holding it" from "renderer died". | The renderer sends a heartbeat every 400ms while a drag is held; watchdog raised to 2s. |
+| 4 | **The focus watcher could silently stop forever.** If the PowerShell helper wedged mid-request, `focusPending` stayed `true` and no further polls were issued. | Moods would quietly stop with no error and no recovery. | The poll loop times out a stuck request after 3 intervals and resets. |
+| 5 | **The pal could walk across the water overlay.** Both windows sit at `screen-saver` level, so z-order between them is not guaranteed. | Only worked before because the pal was confined to a thin strip. | The pet window hides for the overlay's duration and restores afterwards, respecting the Hide setting. |
+| 6 | **`HOUSE_H` was stale at 128** after the real house art (square) replaced the CSS house. | It feeds the doorway calculation, so the pal walked to a point ~32px above the real door — it would have appeared to enter through the wall. | One consistent constant across slicer, main process, and renderer, with cross-referencing comments. |
+| 7 | **Wave while sitting left the pal stuck standing.** The sit branch was guarded by `if (state !== RESTING)`, but state was *already* `RESTING` with the animation overwritten to `wave`. | A state-guarded assignment can never repair an animation desync — the pal would never sit again. | Drive the animation off the animation, not the state. |
+| 8 | **Enabling follow mid-wander was ignored for up to ~20s** while the pal finished its random walk. | Looked broken right after toggling the setting on. | `setFollow(true)` abandons a plain wander target — but explicitly *not* a walk that is delivering a reminder. |
+| 9 | **Sending the pal to bed mid-focus-session** left `_focusActive` true. | Main's session clock kept running and would try to start a break while the pal was asleep in the house. | `requestSleep()` ends the session and emits `focusStopped` so main clears its timers. |
+
+### Art masking, second time around
+
+The house sheet needed a **different background tolerance than the character
+sheet** (25 vs 40). At 40 the flood fill seeped through the jagged shingle gaps
+and hollowed out the roof, because the roof's dark mortar lines sit at colour
+distance 30-40 from the backdrop while the true backdrop sits at ≤20. This was
+found by histogramming the colour distances in the roof region rather than by
+guessing.
+
+**Lesson:** the red/green background composite test (§3.1) must be re-run for
+every new art sheet. Masking constants do not transfer between sheets.
+
+---
+
+## 7. Quick reference: rebuilding assets after art changes
 
 ```
-npm run slice          # re-cut assets/pal/*.png from assets/reference/spritesheet.png
-npm run placeholders   # regenerate assets/icon.ico, assets/icon.png, assets/tray.png
+npm run slice              # re-cut assets/pal/*.png from assets/reference/spritesheet.png
+npm run placeholders       # regenerate assets/icon.ico, assets/icon.png, assets/tray.png
+node tools/slice-house.js  # re-cut assets/house/*.png from assets/reference/housesheet.png
 ```
+
+Sprite size lives in `tools/slice-sheet.js` (`CANVAS`) and house size in
+`tools/slice-house.js` (`OUT_W`). Both are re-sliced from the high-resolution
+source rather than downscaling an already-generated PNG, which would soften the
+pixel art. Changing either means updating the matching `PAL_W`/`PAL_H` or
+`HOUSE_W`/`HOUSE_H` constants in `main.js` and `renderer/pet.js`, plus the CSS.
 
 If a new sheet ever produces a raw component count that isn't exactly 31
 after filtering, `tools/slice-sheet.js` stops and prints the count rather

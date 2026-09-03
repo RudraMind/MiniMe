@@ -10,6 +10,11 @@ const STATES = Object.freeze({
   SLEEPING: 'SLEEPING',
   WAKING: 'WAKING',
   EXITING_HOUSE: 'EXITING_HOUSE',
+  FOLLOWING: 'FOLLOWING',
+  RESTING: 'RESTING',
+  DRAGGED: 'DRAGGED',
+  WORKING: 'WORKING', // sitting at the work spot during a focus session
+  BREAK: 'BREAK',     // stretching between focus sessions
 });
 
 const HOUSE = Object.freeze({ CLOSED: 'closed', OPEN: 'open', NIGHT: 'night' });
@@ -18,6 +23,17 @@ const HOUSE = Object.freeze({ CLOSED: 'closed', OPEN: 'open', NIGHT: 'night' });
 // scaling by raw dtMs (16ms ticks) made the pal cover ~1400px/sec (a blink-
 // and-you-miss-it dash instead of a walk).
 const REFERENCE_TICK_MS = 16;
+
+// Follow-cursor tuning.
+const FOLLOW_DEADZONE_PX = 12;
+const FOLLOW_SPEED_FACTOR = 0.7; // "walks slowly" toward the cursor
+
+// How long the pal holds the spot you dropped it on before resuming.
+const DRAG_HOLD_MS = 8000;
+
+// Only flip the sprite when there's meaningful horizontal travel. The art has
+// no up/down poses, so near-vertical movement must not cause facing flicker.
+const FACING_EPSILON_PX = 1.5;
 
 // How long a flourish plays before returning to idle (ms).
 const FLOURISH_MS = {
@@ -61,19 +77,20 @@ class PalState extends EventEmitter {
   constructor(cfg) {
     super();
     this.cfg = {
-      laneMinX: cfg.laneMinX,
-      laneMaxX: cfg.laneMaxX,
-      houseDoorX: cfg.houseDoorX,
-      walkSpeed: cfg.walkSpeed ?? 1.4, // px/ms
+      bounds: cfg.bounds, // { minX, maxX, minY, maxY } in screen coords
+      houseDoor: cfg.houseDoor, // { x, y }
+      walkSpeed: cfg.walkSpeed ?? 1.4,
       bubbleMs: cfg.bubbleMs ?? 8000,
       idleMinMs: cfg.idleMinMs ?? 8000,
       idleMaxMs: cfg.idleMaxMs ?? 20000,
     };
 
     this.state = STATES.IDLE;
-    this.x = cfg.startX ?? this.cfg.laneMinX;
+    this.x = cfg.startX ?? this.cfg.bounds.minX;
+    this.y = cfg.startY ?? this.cfg.bounds.minY;
     this.facing = 1;
     this.targetX = null;
+    this.targetY = null;
     this.bubbleText = null;
     this.animation = 'idle';
     this.houseState = HOUSE.CLOSED;
@@ -81,33 +98,206 @@ class PalState extends EventEmitter {
     this._idleTimer = randRange(this.cfg.idleMinMs, this.cfg.idleMaxMs);
     this._phaseTimer = 0;
     this._pendingReminder = null; // 'stretch' | 'water'
+    this._reminderKind = null;
     this._flourish = null;
     this._flourishActive = false;
     this._waveTimer = 0;
     this._queuedReminder = null;
+
+    this._followEnabled = false;
+    this._cursorTarget = null; // { x, y }
+    this._cursorIdle = false;
+
+    this._dragging = false;
+    this._dragHoldMs = 0;
+
+    this._focusActive = false;
+    this._pendingWork = false;
+  }
+
+  get focusActive() {
+    return this._focusActive;
+  }
+
+  // Walk to the work spot and sit down to work alongside you. Main owns the
+  // session/break clocks; this just owns the pal's behavior.
+  startWork(spot) {
+    this._focusActive = true;
+    this._pendingReminder = null;
+    this.bubbleText = null;
+    this._waveTimer = 0;
+    this._flourishActive = false;
+    if (this.state === STATES.DRAGGED && this._dragging) {
+      // Started a session while being held: sit as soon as it's put down.
+      this._pendingWork = true;
+      return true;
+    }
+    this._pendingWork = true;
+    this._beginWalk(spot.x, spot.y);
+    return true;
+  }
+
+  // Stand up and stretch for the duration of the break.
+  startBreak(text, ms) {
+    if (!this._focusActive) return false;
+    this.state = STATES.BREAK;
+    this.animation = 'stretch';
+    this.bubbleText = text;
+    this._phaseTimer = ms;
+    return true;
+  }
+
+  stopWork() {
+    if (!this._focusActive) return false;
+    this._focusActive = false;
+    this._pendingWork = false;
+    this.bubbleText = null;
+    if (this.state === STATES.WORKING || this.state === STATES.BREAK) {
+      this._arriveIdle();
+    }
+    return true;
+  }
+
+  // Screen geometry can change (resolution, DPI, taskbar, monitor swap).
+  setBounds(bounds, houseDoor) {
+    this.cfg.bounds = bounds;
+    if (houseDoor) this.cfg.houseDoor = houseDoor;
+    const p = this._clamp(this.x, this.y);
+    this.x = p.x;
+    this.y = p.y;
+  }
+
+  _clamp(x, y) {
+    const b = this.cfg.bounds;
+    return {
+      x: Math.min(Math.max(x, b.minX), b.maxX),
+      y: Math.min(Math.max(y, b.minY), b.maxY),
+    };
+  }
+
+  _randomPoint() {
+    const b = this.cfg.bounds;
+    return { x: randRange(b.minX, b.maxX), y: randRange(b.minY, b.maxY) };
+  }
+
+  // Move toward a point at the given per-tick speed. Returns true on arrival.
+  _moveToward(tx, ty, speedPerTick, dtMs) {
+    const dx = tx - this.x;
+    const dy = ty - this.y;
+    const dist = Math.hypot(dx, dy);
+    const step = speedPerTick * (dtMs / REFERENCE_TICK_MS);
+    if (dist === 0 || dist <= step) {
+      this.x = tx;
+      this.y = ty;
+      return true;
+    }
+    if (Math.abs(dx) > FACING_EPSILON_PX) this.facing = dx > 0 ? 1 : -1;
+    this.x += (dx / dist) * step;
+    this.y += (dy / dist) * step;
+    return false;
+  }
+
+  _canFollow() {
+    return this.state === STATES.IDLE
+      || this.state === STATES.FOLLOWING
+      || this.state === STATES.RESTING;
+  }
+
+  playOneShot(anim, ms) {
+    if (this.state !== STATES.IDLE && !this._canFollow()) return false;
+    this._flourishActive = false;
+    this._flourish = null;
+    this._waveTimer = ms;
+    this.animation = anim;
+    return true;
+  }
+
+  wave() {
+    return this.playOneShot('wave', 720); // 4 frames * 180ms
+  }
+
+  setFollow(enabled) {
+    if (this._followEnabled === enabled) return;
+    this._followEnabled = enabled;
+    this._cursorTarget = null;
+    this._cursorIdle = false;
+    if (!enabled && (this.state === STATES.FOLLOWING || this.state === STATES.RESTING)) {
+      this._arriveIdle();
+      return;
+    }
+    // Entering follow mode mid-wander: abandon the random walk target so follow
+    // engages now instead of after a walk that can take many seconds. A walk
+    // delivering a reminder is left alone — reminders outrank follow.
+    if (enabled && this.state === STATES.WALKING && !this._pendingReminder) {
+      this._arriveIdle();
+    }
+  }
+
+  updateCursor(x, y, cursorIdle) {
+    this._cursorTarget = { x, y };
+    this._cursorIdle = cursorIdle;
+  }
+
+  beginDrag() {
+    if (this.state === STATES.SLEEPING
+      || this.state === STATES.GOING_HOME
+      || this.state === STATES.ENTERING_HOUSE
+      || this.state === STATES.WAKING
+      || this.state === STATES.EXITING_HOUSE) {
+      return false;
+    }
+    if (this._pendingReminder && !this._queuedReminder) {
+      this._queuedReminder = this._pendingReminder;
+    }
+    this._pendingReminder = null;
+    this.bubbleText = null;
+    this._waveTimer = 0;
+    this._flourishActive = false;
+    this._dragging = true;
+    this._dragHoldMs = 0;
+    this.state = STATES.DRAGGED;
+    this.animation = 'idle';
+    return true;
+  }
+
+  dragTo(x, y) {
+    if (!this._dragging) return;
+    const p = this._clamp(x, y);
+    this.x = p.x;
+    this.y = p.y;
+  }
+
+  endDrag() {
+    if (!this._dragging) return;
+    this._dragging = false;
+    this._dragHoldMs = DRAG_HOLD_MS;
+  }
+
+  _drainQueuedReminder() {
+    if (!this._queuedReminder) return;
+    const queued = this._queuedReminder;
+    this._queuedReminder = null;
+    this.requestReminder(queued);
   }
 
   requestReminder(kind) {
-    if (this.state !== STATES.IDLE && this.state !== STATES.WALKING) return false;
+    if (this.state === STATES.DRAGGED) {
+      if (!this._queuedReminder) this._queuedReminder = kind;
+      return false;
+    }
+    const interruptible = this.state === STATES.IDLE
+      || this.state === STATES.WALKING
+      || this.state === STATES.FOLLOWING
+      || this.state === STATES.RESTING;
+    if (!interruptible) return false;
     if (this._pendingReminder && this._pendingReminder !== kind) {
-      // Already walking to deliver a different reminder — queue this one
-      // instead of clobbering it (stretch/water intervals can collide).
       if (!this._queuedReminder) this._queuedReminder = kind;
       return false;
     }
     this._pendingReminder = kind;
     this._flourish = null;
-    const center = (this.cfg.laneMinX + this.cfg.laneMaxX) / 2;
-    this._beginWalk(center);
-    return true;
-  }
-
-  wave() {
-    if (this.state !== STATES.IDLE) return false;
-    this._flourishActive = false;
-    this._flourish = null;
-    this._waveTimer = 720; // matches wave animation: 4 frames * 180ms
-    this.animation = 'wave';
+    const b = this.cfg.bounds;
+    this._beginWalk((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2);
     return true;
   }
 
@@ -115,12 +305,21 @@ class PalState extends EventEmitter {
     if (this.state === STATES.SLEEPING || this.state === STATES.GOING_HOME || this.state === STATES.ENTERING_HOUSE) {
       return false;
     }
+    // Going to bed ends any focus session, or main's session clock would keep
+    // running and try to start a break while the pal is asleep in the house.
+    if (this._focusActive) {
+      this._focusActive = false;
+      this._pendingWork = false;
+      this.emit('focusStopped');
+    }
     this._pendingReminder = null;
     this._queuedReminder = null;
     this.bubbleText = null;
+    this._dragging = false;
     this.state = STATES.GOING_HOME;
     this.animation = 'walk';
-    this.targetX = this.cfg.houseDoorX;
+    this.targetX = this.cfg.houseDoor.x;
+    this.targetY = this.cfg.houseDoor.y;
     return true;
   }
 
@@ -132,9 +331,12 @@ class PalState extends EventEmitter {
     return true;
   }
 
-  _beginWalk(targetX) {
+  _beginWalk(targetX, targetY) {
     this.targetX = targetX;
-    this.facing = targetX >= this.x ? 1 : -1;
+    this.targetY = targetY;
+    if (Math.abs(targetX - this.x) > FACING_EPSILON_PX) {
+      this.facing = targetX >= this.x ? 1 : -1;
+    }
     this.state = STATES.WALKING;
     this.animation = 'walk';
   }
@@ -143,11 +345,69 @@ class PalState extends EventEmitter {
     this.state = STATES.IDLE;
     this.animation = 'idle';
     this.targetX = null;
+    this.targetY = null;
     this._flourish = null;
     this._idleTimer = randRange(this.cfg.idleMinMs, this.cfg.idleMaxMs);
   }
 
+  _tickFollow(dtMs) {
+    if (this._waveTimer > 0) {
+      this._waveTimer -= dtMs;
+      if (this._waveTimer <= 0) {
+        this._waveTimer = 0;
+        this.animation = 'idle';
+      }
+      return;
+    }
+
+    const target = this._clamp(this._cursorTarget.x, this._cursorTarget.y);
+    const dist = Math.hypot(target.x - this.x, target.y - this.y);
+
+    if (dist > FOLLOW_DEADZONE_PX) {
+      this.state = STATES.FOLLOWING;
+      this.animation = 'walk';
+      this._moveToward(target.x, target.y, this.cfg.walkSpeed * FOLLOW_SPEED_FACTOR, dtMs);
+      return;
+    }
+
+    // Arrived under the cursor: sit once the cursor has gone idle, else stand.
+    // Drive this off the animation, not the state — a wave played while already
+    // RESTING would otherwise never restore the sit pose.
+    if (this._cursorIdle) {
+      this.state = STATES.RESTING;
+      this.animation = 'sit';
+    } else {
+      this.state = STATES.FOLLOWING;
+      this.animation = 'idle';
+    }
+  }
+
   tick(dtMs) {
+    if (this.state === STATES.DRAGGED) {
+      if (!this._dragging) {
+        // Dropped during a focus session: sit and get back to work right where
+        // it was put, rather than wandering off after the usual hold.
+        if (this._focusActive) {
+          this.state = STATES.WORKING;
+          this.animation = 'sit';
+          this._pendingWork = false;
+          this.emit('workSpotMoved', { x: this.x, y: this.y });
+          return;
+        }
+        this._dragHoldMs -= dtMs;
+        if (this._dragHoldMs <= 0) {
+          this._arriveIdle();
+          this._drainQueuedReminder();
+        }
+      }
+      return;
+    }
+
+    if (this._followEnabled && this._cursorTarget !== null && this._canFollow()) {
+      this._tickFollow(dtMs);
+      return;
+    }
+
     switch (this.state) {
       case STATES.IDLE: {
         if (this._waveTimer > 0) {
@@ -161,8 +421,8 @@ class PalState extends EventEmitter {
         this._idleTimer -= dtMs;
         if (this._idleTimer <= 0) {
           if (Math.random() < 0.55) {
-            const nx = randRange(this.cfg.laneMinX, this.cfg.laneMaxX);
-            this._beginWalk(nx);
+            const p = this._randomPoint();
+            this._beginWalk(p.x, p.y);
           } else {
             this._flourish = weightedPick(FLOURISH_WEIGHTS);
             this.animation = this._flourish;
@@ -181,14 +441,27 @@ class PalState extends EventEmitter {
         break;
       }
 
+      case STATES.WORKING:
+        // Sits still and works. Wandering, flourishes, and follow are all
+        // suppressed — that's the entire point of a focus session.
+        break;
+
+      case STATES.BREAK: {
+        this._phaseTimer -= dtMs;
+        if (this._phaseTimer <= 0) {
+          this.bubbleText = null;
+          this.emit('breakComplete');
+        }
+        break;
+      }
+
       case STATES.WALKING: {
-        const dir = this.targetX >= this.x ? 1 : -1;
-        this.facing = dir;
-        this.x += dir * this.cfg.walkSpeed * (dtMs / REFERENCE_TICK_MS);
-        const arrived = (dir === 1 && this.x >= this.targetX) || (dir === -1 && this.x <= this.targetX);
-        if (arrived) {
-          this.x = this.targetX;
-          if (this._pendingReminder) {
+        if (this._moveToward(this.targetX, this.targetY, this.cfg.walkSpeed, dtMs)) {
+          if (this._pendingWork) {
+            this._pendingWork = false;
+            this.state = STATES.WORKING;
+            this.animation = 'sit';
+          } else if (this._pendingReminder) {
             const kind = this._pendingReminder;
             this._pendingReminder = null;
             this.state = STATES.REMINDING;
@@ -213,22 +486,13 @@ class PalState extends EventEmitter {
           this._reminderKind = null;
           this._arriveIdle();
           this.emit('reminderComplete', kind);
-          if (this._queuedReminder) {
-            const queued = this._queuedReminder;
-            this._queuedReminder = null;
-            this.requestReminder(queued);
-          }
+          this._drainQueuedReminder();
         }
         break;
       }
 
       case STATES.GOING_HOME: {
-        const dir = this.targetX >= this.x ? 1 : -1;
-        this.facing = dir;
-        this.x += dir * this.cfg.walkSpeed * (dtMs / REFERENCE_TICK_MS);
-        const arrived = (dir === 1 && this.x >= this.targetX) || (dir === -1 && this.x <= this.targetX);
-        if (arrived) {
-          this.x = this.targetX;
+        if (this._moveToward(this.targetX, this.targetY, this.cfg.walkSpeed, dtMs)) {
           this.state = STATES.ENTERING_HOUSE;
           this.animation = 'idle';
           this._phaseTimer = 600;
@@ -254,20 +518,18 @@ class PalState extends EventEmitter {
         if (this._phaseTimer <= 0) {
           this.state = STATES.EXITING_HOUSE;
           this.animation = 'walk';
-          this.x = this.cfg.houseDoorX;
-          this.targetX = randRange(this.cfg.laneMinX, this.cfg.laneMaxX);
+          this.x = this.cfg.houseDoor.x;
+          this.y = this.cfg.houseDoor.y;
+          const p = this._randomPoint();
+          this.targetX = p.x;
+          this.targetY = p.y;
           this.houseState = HOUSE.CLOSED;
         }
         break;
       }
 
       case STATES.EXITING_HOUSE: {
-        const dir = this.targetX >= this.x ? 1 : -1;
-        this.facing = dir;
-        this.x += dir * this.cfg.walkSpeed * (dtMs / REFERENCE_TICK_MS);
-        const arrived = (dir === 1 && this.x >= this.targetX) || (dir === -1 && this.x <= this.targetX);
-        if (arrived) {
-          this.x = this.targetX;
+        if (this._moveToward(this.targetX, this.targetY, this.cfg.walkSpeed, dtMs)) {
           this._arriveIdle();
           this.emit('awake');
         }
@@ -283,6 +545,7 @@ class PalState extends EventEmitter {
     return {
       state: this.state,
       x: this.x,
+      y: this.y,
       facing: this.facing,
       animation: this.animation,
       bubbleText: this.bubbleText,

@@ -1,0 +1,33 @@
+{
+  "width": 120,
+  "height": 120,
+  "states": [
+    {
+      "name": "house_closed",
+      "sourceBBox": {
+        "x": 85,
+        "y": 216,
+        "width": 471,
+        "height": 471
+      }
+    },
+    {
+      "name": "house_open",
+      "sourceBBox": {
+        "x": 625,
+        "y": 216,
+        "width": 471,
+        "height": 471
+      }
+    },
+    {
+      "name": "house_night",
+      "sourceBBox": {
+        "x": 1168,
+        "y": 216,
+        "width": 471,
+        "height": 471
+      }
+    }
+  ]
+}

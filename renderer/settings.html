@@ -7,6 +7,21 @@
 <body>
   <h1>MiniMe Settings</h1>
 
+  <label>Name
+    <input type="text" id="palName" maxlength="24" placeholder="Raj" />
+  </label>
+
+  <label>Focus session length (minutes)
+    <input type="number" id="focusSessionMin" min="1" />
+  </label>
+
+  <label>Focus break length (minutes)
+    <input type="number" id="focusBreakMin" min="1" />
+  </label>
+  <p class="hint">Start a focus session from the tray or by right-clicking.
+    They'll sit down and work beside you, with reminders paused, then stand up
+    and stretch with you at the break. Drag them anywhere to move the work spot.</p>
+
   <label>Stretch reminder every (minutes)
     <input type="number" id="stretchIntervalMin" min="1" />
   </label>
@@ -42,12 +57,20 @@
     <div class="swatches" id="pantSwatches"></div>
   </div>
 
-  <label>Lane orientation
-    <select id="laneOrientation">
-      <option value="horizontal">Horizontal (top edge)</option>
-      <option value="vertical">Vertical (right edge)</option>
-    </select>
+  <label class="checkbox">
+    <input type="checkbox" id="followCursor" />
+    Follow my cursor
   </label>
+  <p class="hint">MiniMe walks toward your cursor, and sits down to relax when
+    the cursor stops moving. Reminders and bedtime still take priority.</p>
+
+  <label class="checkbox">
+    <input type="checkbox" id="focusMoods" />
+    React to the app I'm using
+  </label>
+  <p class="hint">MiniMe strikes a pose that suits whatever app you switch to.
+    It reads only the app's name (like "chrome") — never window titles, page
+    names, or filenames — and nothing leaves your computer.</p>
 
   <fieldset>
     <legend>Quiet hours (auto-sleep)</legend>

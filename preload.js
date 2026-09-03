@@ -1,7 +1,10 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 
-const SEND_CHANNELS = ['hover:enter', 'hover:leave', 'pal:click', 'house:contextmenu', 'overlay:dismiss'];
+const SEND_CHANNELS = [
+  'hover:enter', 'hover:leave', 'pal:click', 'house:contextmenu', 'overlay:dismiss',
+  'pal:dragstart', 'pal:drag', 'pal:dragend', 'house:drag', 'house:dragend',
+];
 const ON_CHANNELS = ['pal:state', 'overlay:countdown', 'overlay:open', 'config:update'];
 const INVOKE_CHANNELS = ['config:get', 'config:set'];
 

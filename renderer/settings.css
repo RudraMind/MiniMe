@@ -7,6 +7,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* The panel has a fixed height; let it scroll rather than clipping options. */
+  overflow-y: auto;
+  min-height: 100vh;
+  margin: 0;
 }
 h1 { font-size: 16px; margin-bottom: 4px; }
 label {
@@ -20,7 +24,7 @@ label.checkbox {
   align-items: center;
   gap: 8px;
 }
-input[type="number"], input[type="time"], select {
+input[type="number"], input[type="time"], input[type="text"], select {
   background: #2e3a4a;
   border: 1px solid #445267;
   color: #f4f1ea;
@@ -47,6 +51,7 @@ legend { font-size: 12px; opacity: 0.8; }
   cursor: pointer;
 }
 #status { font-size: 12px; opacity: 0.8; min-height: 14px; }
+.hint { font-size: 11px; opacity: 0.65; line-height: 1.4; margin: -6px 0 0; }
 
 .swatch-group { display: flex; flex-direction: column; gap: 6px; }
 .swatch-label { font-size: 13px; }
