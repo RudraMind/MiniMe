@@ -75,11 +75,22 @@ Optional: **follow your cursor**, or **react to the app you're in**.
 
 ---
 
+## 🧑‍🤝‍🧑 Pick your companion
+
+<img src="docs/img/characters.png" alt="Raj, Hanu, Boy, Girl and Dog" width="100%">
+
+Five to choose from. Switch any time — right-click → **Character**, or from
+Settings. Each one has their own poses: Hanu leaps with his mace at exercise
+time and runs home to bed, the dog trots and sits, the kids stretch and jump.
+
+---
+
 ## 🎨 Make them yours
 
 <img src="docs/img/outfits.png" alt="Outfit colours: original, red, blue, green, orange, yellow" width="100%">
 
-Pick their shirt and trousers. Give them a name — `Chotu` by default.
+Pick their shirt and trousers, and give them a name. (Outfit colours apply
+to Raj; the other characters have their own fixed outfits.)
 
 ---
 
@@ -173,7 +184,8 @@ node -e "const {PalState}=require('./state.js'); /* drive tick() and assert */"
 ```
 
 `npm run dist` builds the installer. Regenerating art needs
-`npm install sharp to-ico`, then `npm run assets` and `node tools/slice-house.js`.
+`npm install sharp to-ico`, then `npm run assets`, `node tools/slice-house.js`
+and `node tools/slice-character.js`.
 
 [`BUILD_LOG.md`](BUILD_LOG.md) covers the real bugs hit along the way — sprite
 masking, Windows packaging traps, and why the fixes look like they do.

@@ -1,4 +1,5 @@
 import { COLOR_SWATCHES } from './recolor.js';
+import { getCharacter } from './animations.js';
 
 const fields = [
   'stretchIntervalMin', 'waterIntervalMin', 'overlaySeconds', 'bubbleMs', 'walkSpeed',
@@ -40,7 +41,11 @@ async function load() {
   buildSwatches('shirtSwatches', shirtColor, (key) => (shirtColor = key));
   buildSwatches('pantSwatches', pantColor, (key) => (pantColor = key));
 
-  document.getElementById('palName').value = cfg.palName || 'Chotu';
+  const charSel = document.getElementById('character');
+  charSel.value = cfg.character || 'raj';
+  document.getElementById('palName').value = cfg.palName || '';
+  document.getElementById('palName').placeholder = getCharacter(charSel.value).defaultName;
+  syncOutfitVisibility();
   document.getElementById('followCursor').checked = !!cfg.followCursor;
   document.getElementById('focusMoods').checked = !!cfg.focusMoods;
 }
@@ -56,14 +61,29 @@ document.getElementById('save').addEventListener('click', async () => {
   };
   patch.shirtColor = shirtColor;
   patch.pantColor = pantColor;
+  const charKey = document.getElementById('character').value;
+  patch.character = charKey;
   const name = document.getElementById('palName').value.trim();
-  patch.palName = name || 'Chotu';
+  patch.palName = name || getCharacter(charKey).defaultName;
   patch.followCursor = document.getElementById('followCursor').checked;
   patch.focusMoods = document.getElementById('focusMoods').checked;
   await window.pixelpal.invoke('config:set', patch);
   const status = document.getElementById('status');
   status.textContent = 'Saved.';
   setTimeout(() => (status.textContent = ''), 2000);
+});
+
+// Hide the outfit swatches for characters the recolour doesn't apply to.
+function syncOutfitVisibility() {
+  const key = document.getElementById('character').value;
+  const section = document.getElementById('outfitSection');
+  section.classList.toggle('hidden', !getCharacter(key).recolorable);
+}
+
+document.getElementById('character').addEventListener('change', () => {
+  const key = document.getElementById('character').value;
+  document.getElementById('palName').placeholder = getCharacter(key).defaultName;
+  syncOutfitVisibility();
 });
 
 load();

@@ -1,0 +1,134 @@
+[
+  {
+    "index": 0,
+    "name": "boy_walk_01",
+    "sourceBBox": {
+      "x": 133,
+      "y": 39,
+      "width": 183,
+      "height": 296
+    },
+    "area": 32111
+  },
+  {
+    "index": 1,
+    "name": "boy_walk_02",
+    "sourceBBox": {
+      "x": 493,
+      "y": 37,
+      "width": 175,
+      "height": 297
+    },
+    "area": 32547
+  },
+  {
+    "index": 2,
+    "name": "boy_jump_01",
+    "sourceBBox": {
+      "x": 808,
+      "y": 15,
+      "width": 217,
+      "height": 293
+    },
+    "area": 34174
+  },
+  {
+    "index": 3,
+    "name": "boy_bed_01",
+    "sourceBBox": {
+      "x": 1119,
+      "y": 88,
+      "width": 341,
+      "height": 240
+    },
+    "area": 63750
+  },
+  {
+    "index": 4,
+    "name": "boy_drink_01",
+    "sourceBBox": {
+      "x": 106,
+      "y": 371,
+      "width": 215,
+      "height": 290
+    },
+    "area": 32273
+  },
+  {
+    "index": 5,
+    "name": "boy_run_01",
+    "sourceBBox": {
+      "x": 478,
+      "y": 384,
+      "width": 247,
+      "height": 272
+    },
+    "area": 36524
+  },
+  {
+    "index": 6,
+    "name": "boy_run_02",
+    "sourceBBox": {
+      "x": 797,
+      "y": 377,
+      "width": 227,
+      "height": 279
+    },
+    "area": 36213
+  },
+  {
+    "index": 7,
+    "name": "boy_sit_01",
+    "sourceBBox": {
+      "x": 1182,
+      "y": 361,
+      "width": 186,
+      "height": 296
+    },
+    "area": 35156
+  },
+  {
+    "index": 8,
+    "name": "boy_wave_01",
+    "sourceBBox": {
+      "x": 112,
+      "y": 689,
+      "width": 181,
+      "height": 292
+    },
+    "area": 29894
+  },
+  {
+    "index": 9,
+    "name": "boy_stretch_01",
+    "sourceBBox": {
+      "x": 424,
+      "y": 697,
+      "width": 231,
+      "height": 284
+    },
+    "area": 31442
+  },
+  {
+    "index": 10,
+    "name": "boy_walk_03",
+    "sourceBBox": {
+      "x": 820,
+      "y": 709,
+      "width": 163,
+      "height": 263
+    },
+    "area": 28095
+  },
+  {
+    "index": 11,
+    "name": "boy_sleep_01",
+    "sourceBBox": {
+      "x": 1126,
+      "y": 731,
+      "width": 294,
+      "height": 235
+    },
+    "area": 44606
+  }
+]

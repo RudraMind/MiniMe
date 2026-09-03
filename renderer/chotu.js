@@ -1,4 +1,4 @@
-import { ANIMATIONS } from './animations.js';
+import { CHARACTERS, getCharacter, resolveAnimation, allFrames, DEFAULT_CHARACTER } from './animations.js';
 import { prefetchFrameSet } from './recolor.js';
 
 const palEl = document.getElementById('pal');
@@ -7,15 +7,20 @@ const houseImg = document.getElementById('houseImg');
 const bubbleEl = document.getElementById('bubble');
 const zzzEl = document.getElementById('zzz');
 
-const FRAME_BASE = '../assets/pal/';
 const HOUSE_BASE = '../assets/house/';
 const PAL_W = 72;
 const PAL_H = 72;
 const HOUSE_W = 120;
 const HOUSE_H = 120;
 
-const ALL_FRAME_NAMES = [...new Set(Object.values(ANIMATIONS).flatMap((a) => a.frames))];
-let frameSrcMap = Object.fromEntries(ALL_FRAME_NAMES.map((f) => [f, FRAME_BASE + f + '.png']));
+// Which character is on screen, and the frame -> image-src map for it.
+let characterKey = DEFAULT_CHARACTER;
+let frameSrcMap = {};
+
+function plainFrameMap(key) {
+  const dir = getCharacter(key).dir;
+  return Object.fromEntries(allFrames(key).map((f) => [f, dir + f + '.png']));
+}
 
 // Preload house states so swapping closed/open/night never flickers.
 for (const s of ['house_closed', 'house_open', 'house_night']) {
@@ -23,12 +28,32 @@ for (const s of ['house_closed', 'house_open', 'house_night']) {
   img.src = HOUSE_BASE + s + '.png';
 }
 
-async function applyColors(shirtKey, pantKey) {
-  frameSrcMap = await prefetchFrameSet(ALL_FRAME_NAMES, shirtKey, pantKey);
+// Build the frame map for the active character. Outfit recolouring only
+// applies to characters whose art is a neutral shirt and trousers; Hanu's
+// saturated orange and gold would be untouched by it anyway.
+async function applyCharacter(cfg) {
+  const key = cfg && CHARACTERS[cfg.character] ? cfg.character : DEFAULT_CHARACTER;
+  characterKey = key;
+  const c = getCharacter(key);
+  // Show something correct immediately, then swap in recoloured frames.
+  frameSrcMap = plainFrameMap(key);
+  preloadFrames(frameSrcMap);
+  if (c.recolorable) {
+    const recolored = await prefetchFrameSet(allFrames(key), cfg.shirtColor, cfg.pantColor, c.dir);
+    // Ignore a slow recolour that finished after the character changed again.
+    if (characterKey === key) frameSrcMap = recolored;
+  }
 }
 
-window.pixelpal.invoke('config:get').then((cfg) => applyColors(cfg.shirtColor, cfg.pantColor));
-window.pixelpal.on('config:update', (cfg) => applyColors(cfg.shirtColor, cfg.pantColor));
+function preloadFrames(map) {
+  for (const src of Object.values(map)) {
+    const img = new Image();
+    img.src = src;
+  }
+}
+
+window.pixelpal.invoke('config:get').then(applyCharacter);
+window.pixelpal.on('config:update', applyCharacter);
 
 let currentAnim = null;
 let frameIndex = 0;
@@ -46,7 +71,7 @@ function setAnimation(name) {
 function renderLoop(ts) {
   const dt = ts - lastTs;
   lastTs = ts;
-  const anim = ANIMATIONS[currentAnim] || ANIMATIONS.idle;
+  const anim = resolveAnimation(characterKey, currentAnim || 'idle');
   frameElapsed += dt;
   if (frameElapsed >= anim.ms) {
     frameElapsed = 0;
@@ -57,7 +82,8 @@ function renderLoop(ts) {
     }
   }
   const frame = anim.frames[Math.min(frameIndex, anim.frames.length - 1)];
-  palEl.src = frameSrcMap[frame] || FRAME_BASE + frame + '.png';
+  const src = frameSrcMap[frame];
+  if (src) palEl.src = src;
   palEl.style.transform = `scaleX(${facing < 0 ? -1 : 1})`;
   requestAnimationFrame(renderLoop);
 }

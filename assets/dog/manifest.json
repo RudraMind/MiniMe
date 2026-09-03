@@ -1,0 +1,134 @@
+[
+  {
+    "index": 0,
+    "name": "dog_run_01",
+    "sourceBBox": {
+      "x": 73,
+      "y": 29,
+      "width": 260,
+      "height": 271
+    },
+    "area": 48758
+  },
+  {
+    "index": 1,
+    "name": "dog_run_02",
+    "sourceBBox": {
+      "x": 425,
+      "y": 26,
+      "width": 312,
+      "height": 282
+    },
+    "area": 57757
+  },
+  {
+    "index": 2,
+    "name": "dog_wave_01",
+    "sourceBBox": {
+      "x": 835,
+      "y": 22,
+      "width": 251,
+      "height": 294
+    },
+    "area": 52796
+  },
+  {
+    "index": 3,
+    "name": "dog_sleep_01",
+    "sourceBBox": {
+      "x": 1142,
+      "y": 80,
+      "width": 351,
+      "height": 225
+    },
+    "area": 53460
+  },
+  {
+    "index": 4,
+    "name": "dog_drink_01",
+    "sourceBBox": {
+      "x": 60,
+      "y": 358,
+      "width": 306,
+      "height": 270
+    },
+    "area": 53877
+  },
+  {
+    "index": 5,
+    "name": "dog_walk_01",
+    "sourceBBox": {
+      "x": 418,
+      "y": 350,
+      "width": 284,
+      "height": 277
+    },
+    "area": 53473
+  },
+  {
+    "index": 6,
+    "name": "dog_run_03",
+    "sourceBBox": {
+      "x": 768,
+      "y": 347,
+      "width": 314,
+      "height": 285
+    },
+    "area": 59519
+  },
+  {
+    "index": 7,
+    "name": "dog_sit_01",
+    "sourceBBox": {
+      "x": 1193,
+      "y": 348,
+      "width": 257,
+      "height": 278
+    },
+    "area": 47208
+  },
+  {
+    "index": 8,
+    "name": "dog_wave_02",
+    "sourceBBox": {
+      "x": 74,
+      "y": 667,
+      "width": 239,
+      "height": 284
+    },
+    "area": 47621
+  },
+  {
+    "index": 9,
+    "name": "dog_sit_02",
+    "sourceBBox": {
+      "x": 435,
+      "y": 679,
+      "width": 246,
+      "height": 278
+    },
+    "area": 45791
+  },
+  {
+    "index": 10,
+    "name": "dog_walk_02",
+    "sourceBBox": {
+      "x": 777,
+      "y": 665,
+      "width": 261,
+      "height": 290
+    },
+    "area": 53216
+  },
+  {
+    "index": 11,
+    "name": "dog_lie_01",
+    "sourceBBox": {
+      "x": 1133,
+      "y": 725,
+      "width": 350,
+      "height": 216
+    },
+    "area": 49469
+  }
+]

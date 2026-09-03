@@ -7,7 +7,7 @@ export const COLOR_SWATCHES = {
   orange: '#d1793a',
 };
 
-const FRAME_BASE = '../assets/pal/';
+const DEFAULT_DIR = '../assets/pal/';
 const SHIRT_ZONE_FRACTION = 0.58; // upper portion of each frame's bbox = shirt, rest = pants
 const MIN_ALPHA = 200;
 const MAX_SATURATION_SPAN = 14; // skip skin/hair (saturated) pixels
@@ -60,10 +60,11 @@ function hslToRgb(h, s, l) {
   ];
 }
 
-async function loadBaseFrame(frameName) {
-  if (frameCache.has(frameName)) return frameCache.get(frameName);
+async function loadBaseFrame(frameName, dir) {
+  const cacheKey = dir + frameName;
+  if (frameCache.has(cacheKey)) return frameCache.get(cacheKey);
   const img = new Image();
-  img.src = FRAME_BASE + frameName + '.png';
+  img.src = dir + frameName + '.png';
   await img.decode();
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
@@ -86,19 +87,19 @@ async function loadBaseFrame(frameName) {
   }
 
   const entry = { data, width, height, bbox: { minX, maxX, minY, maxY } };
-  frameCache.set(frameName, entry);
+  frameCache.set(cacheKey, entry);
   return entry;
 }
 
-export async function getRecoloredFrameSrc(frameName, shirtKey, pantKey) {
+export async function getRecoloredFrameSrc(frameName, shirtKey, pantKey, dir = DEFAULT_DIR) {
   const shirtOn = shirtKey && shirtKey !== 'default';
   const pantOn = pantKey && pantKey !== 'default';
-  if (!shirtOn && !pantOn) return FRAME_BASE + frameName + '.png';
+  if (!shirtOn && !pantOn) return dir + frameName + '.png';
 
-  const cacheKey = `${frameName}|${shirtKey}|${pantKey}`;
+  const cacheKey = `${dir}|${frameName}|${shirtKey}|${pantKey}`;
   if (outputCache.has(cacheKey)) return outputCache.get(cacheKey);
 
-  const base = await loadBaseFrame(frameName);
+  const base = await loadBaseFrame(frameName, dir);
   const { data: src, width, height, bbox } = base;
   const out = new Uint8ClampedArray(src);
 
@@ -137,9 +138,9 @@ export async function getRecoloredFrameSrc(frameName, shirtKey, pantKey) {
   return dataUrl;
 }
 
-export async function prefetchFrameSet(frameNames, shirtKey, pantKey) {
+export async function prefetchFrameSet(frameNames, shirtKey, pantKey, dir = DEFAULT_DIR) {
   const entries = await Promise.all(
-    frameNames.map(async (name) => [name, await getRecoloredFrameSrc(name, shirtKey, pantKey)])
+    frameNames.map(async (name) => [name, await getRecoloredFrameSrc(name, shirtKey, pantKey, dir)])
   );
   return Object.fromEntries(entries);
 }

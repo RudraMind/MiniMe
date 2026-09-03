@@ -1,0 +1,101 @@
+[
+  {
+    "index": 0,
+    "name": "hanu_walk_01",
+    "sourceBBox": {
+      "x": 200,
+      "y": 30,
+      "width": 251,
+      "height": 344
+    },
+    "area": 50043
+  },
+  {
+    "index": 1,
+    "name": "hanu_walk_02",
+    "sourceBBox": {
+      "x": 603,
+      "y": 29,
+      "width": 297,
+      "height": 345
+    },
+    "area": 55180
+  },
+  {
+    "index": 2,
+    "name": "hanu_jump_01",
+    "sourceBBox": {
+      "x": 1118,
+      "y": 27,
+      "width": 297,
+      "height": 323
+    },
+    "area": 57934
+  },
+  {
+    "index": 3,
+    "name": "hanu_sleep_01",
+    "sourceBBox": {
+      "x": 86,
+      "y": 422,
+      "width": 377,
+      "height": 249
+    },
+    "area": 73484
+  },
+  {
+    "index": 4,
+    "name": "hanu_drink_01",
+    "sourceBBox": {
+      "x": 612,
+      "y": 396,
+      "width": 254,
+      "height": 289
+    },
+    "area": 47293
+  },
+  {
+    "index": 5,
+    "name": "hanu_run_01",
+    "sourceBBox": {
+      "x": 1105,
+      "y": 399,
+      "width": 307,
+      "height": 285
+    },
+    "area": 40521
+  },
+  {
+    "index": 6,
+    "name": "hanu_run_02",
+    "sourceBBox": {
+      "x": 68,
+      "y": 693,
+      "width": 310,
+      "height": 290
+    },
+    "area": 41815
+  },
+  {
+    "index": 7,
+    "name": "hanu_sit_01",
+    "sourceBBox": {
+      "x": 609,
+      "y": 688,
+      "width": 288,
+      "height": 300
+    },
+    "area": 49159
+  },
+  {
+    "index": 8,
+    "name": "hanu_wave_01",
+    "sourceBBox": {
+      "x": 1112,
+      "y": 693,
+      "width": 251,
+      "height": 293
+    },
+    "area": 41950
+  }
+]

@@ -1,0 +1,134 @@
+[
+  {
+    "index": 0,
+    "name": "girl_walk_01",
+    "sourceBBox": {
+      "x": 123,
+      "y": 24,
+      "width": 175,
+      "height": 313
+    },
+    "area": 37613
+  },
+  {
+    "index": 1,
+    "name": "girl_walk_02",
+    "sourceBBox": {
+      "x": 469,
+      "y": 19,
+      "width": 180,
+      "height": 317
+    },
+    "area": 39216
+  },
+  {
+    "index": 2,
+    "name": "girl_jump_01",
+    "sourceBBox": {
+      "x": 799,
+      "y": 13,
+      "width": 214,
+      "height": 300
+    },
+    "area": 38329
+  },
+  {
+    "index": 3,
+    "name": "girl_bed_01",
+    "sourceBBox": {
+      "x": 1138,
+      "y": 48,
+      "width": 337,
+      "height": 281
+    },
+    "area": 68593
+  },
+  {
+    "index": 4,
+    "name": "girl_drink_01",
+    "sourceBBox": {
+      "x": 90,
+      "y": 366,
+      "width": 216,
+      "height": 297
+    },
+    "area": 36642
+  },
+  {
+    "index": 5,
+    "name": "girl_run_01",
+    "sourceBBox": {
+      "x": 456,
+      "y": 382,
+      "width": 249,
+      "height": 274
+    },
+    "area": 36698
+  },
+  {
+    "index": 6,
+    "name": "girl_run_02",
+    "sourceBBox": {
+      "x": 782,
+      "y": 382,
+      "width": 235,
+      "height": 273
+    },
+    "area": 35988
+  },
+  {
+    "index": 7,
+    "name": "girl_sit_01",
+    "sourceBBox": {
+      "x": 1162,
+      "y": 372,
+      "width": 166,
+      "height": 286
+    },
+    "area": 35495
+  },
+  {
+    "index": 8,
+    "name": "girl_wave_01",
+    "sourceBBox": {
+      "x": 87,
+      "y": 697,
+      "width": 202,
+      "height": 288
+    },
+    "area": 35078
+  },
+  {
+    "index": 9,
+    "name": "girl_stretch_01",
+    "sourceBBox": {
+      "x": 427,
+      "y": 701,
+      "width": 225,
+      "height": 284
+    },
+    "area": 33815
+  },
+  {
+    "index": 10,
+    "name": "girl_walk_03",
+    "sourceBBox": {
+      "x": 796,
+      "y": 704,
+      "width": 166,
+      "height": 278
+    },
+    "area": 30133
+  },
+  {
+    "index": 11,
+    "name": "girl_sleep_01",
+    "sourceBBox": {
+      "x": 1118,
+      "y": 740,
+      "width": 316,
+      "height": 224
+    },
+    "area": 41691
+  }
+]

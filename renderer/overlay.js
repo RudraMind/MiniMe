@@ -1,4 +1,4 @@
-import { ANIMATIONS } from './animations.js';
+import { getCharacter, resolveAnimation, DEFAULT_CHARACTER } from './animations.js';
 import { prefetchFrameSet } from './recolor.js';
 
 const palEl = document.getElementById('pal');
@@ -6,23 +6,40 @@ const ringFill = document.getElementById('ringFill');
 const countEl = document.getElementById('count');
 const skipBtn = document.getElementById('skip');
 
-const FRAME_BASE = '../assets/pal/';
 const RING_CIRCUMFERENCE = 283;
 
 let total = 10;
-const drink = ANIMATIONS.drink;
+// The overlay shows whichever character is active, drinking.
+let drink = resolveAnimation(DEFAULT_CHARACTER, 'drink');
 let frameIndex = 0;
-let frameSrcMap = Object.fromEntries(drink.frames.map((f) => [f, FRAME_BASE + f + '.png']));
+let frameSrcMap = {};
+let cycleHandle = null;
+
+function startCycle() {
+  if (cycleHandle) clearInterval(cycleHandle);
+  frameIndex = 0;
+  const first = frameSrcMap[drink.frames[0]];
+  if (first) palEl.src = first;
+  // A single-frame drink pose needs no timer at all.
+  if (drink.frames.length < 2) return;
+  cycleHandle = setInterval(() => {
+    frameIndex = (frameIndex + 1) % drink.frames.length;
+    const src = frameSrcMap[drink.frames[frameIndex]];
+    if (src) palEl.src = src;
+  }, drink.ms);
+}
 
 window.pixelpal.invoke('config:get').then(async (cfg) => {
-  frameSrcMap = await prefetchFrameSet(drink.frames, cfg.shirtColor, cfg.pantColor);
-  palEl.src = frameSrcMap[drink.frames[frameIndex]];
+  const key = cfg && cfg.character ? cfg.character : DEFAULT_CHARACTER;
+  const c = getCharacter(key);
+  drink = resolveAnimation(key, 'drink');
+  frameSrcMap = Object.fromEntries(drink.frames.map((f) => [f, c.dir + f + '.png']));
+  startCycle();
+  if (c.recolorable) {
+    frameSrcMap = await prefetchFrameSet(drink.frames, cfg.shirtColor, cfg.pantColor, c.dir);
+    startCycle();
+  }
 });
-
-setInterval(() => {
-  frameIndex = (frameIndex + 1) % drink.frames.length;
-  palEl.src = frameSrcMap[drink.frames[frameIndex]];
-}, drink.ms);
 
 function dismiss(reason) {
   window.pixelpal.send('overlay:dismiss', { reason });

@@ -69,3 +69,6 @@ legend { font-size: 12px; opacity: 0.8; }
   background: repeating-conic-gradient(#445267 0% 25%, #2e3a4a 0% 50%) 0 / 10px 10px;
 }
 
+
+#outfitSection { display: flex; flex-direction: column; gap: 12px; }
+#outfitSection.hidden { display: none; }

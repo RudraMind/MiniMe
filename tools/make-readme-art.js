@@ -292,6 +292,34 @@ async function focusStrip() {
     .composite(layers).png().toFile(path.join(OUT, 'focus.png'));
 }
 
+
+// --- 7. character lineup ---------------------------------------------------
+
+async function characters() {
+  const cast = [
+    ['pal', 'stand_01', 'Raj'],
+    ['hanu', 'hanu_wave_01', 'Hanu'],
+    ['boy', 'boy_wave_01', 'Boy'],
+    ['girl', 'girl_wave_01', 'Girl'],
+    ['dog', 'dog_sit_01', 'Dog'],
+  ];
+  const CELL = 150, GAP = 10;
+  const W = cast.length * CELL + GAP * (cast.length + 1);
+  const H = CELL + 28 + GAP * 2;
+  const layers = [];
+  for (let i = 0; i < cast.length; i++) {
+    const [dir, frame, label] = cast[i];
+    const x = GAP + i * (CELL + GAP), y = GAP;
+    layers.push({ input: await panel(CELL, CELL, INK2), left: x, top: y });
+    const sprite = await sharp(path.join(ROOT, 'assets', dir, frame + '.png'))
+      .resize(128, 128, { kernel: 'nearest' }).png().toBuffer();
+    layers.push({ input: sprite, left: x + 11, top: y + 11 });
+    layers.push({ input: svgText(label, { size: 15, weight: 600, fill: '#9fb0c2', anchor: 'middle' }), left: x, top: y + CELL + 3 });
+  }
+  return sharp({ create: { width: W, height: H, channels: 4, background: { r: 15, g: 22, b: 32, alpha: 255 } } })
+    .composite(layers).png().toFile(path.join(OUT, 'characters.png'));
+}
+
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   await hero();          console.log('  hero.png');
@@ -300,6 +328,7 @@ async function main() {
   await outfits();       console.log('  outfits.png');
   await houseStates();   console.log('  house.png');
   await focusStrip();    console.log('  focus.png');
+  await characters();    console.log('  characters.png');
   console.log('README art written to docs/img/');
 }
 

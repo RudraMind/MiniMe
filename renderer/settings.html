@@ -7,6 +7,16 @@
 <body>
   <h1>MiniMe Settings</h1>
 
+  <label>Character
+    <select id="character">
+      <option value="raj">Raj</option>
+      <option value="hanu">Hanu</option>
+      <option value="boy">Boy</option>
+      <option value="girl">Girl</option>
+      <option value="dog">Dog</option>
+    </select>
+  </label>
+
   <label>Name
     <input type="text" id="palName" maxlength="24" placeholder="Chotu" />
   </label>
@@ -47,14 +57,16 @@
     Start with Windows
   </label>
 
-  <div class="swatch-group">
-    <span class="swatch-label">Shirt color</span>
-    <div class="swatches" id="shirtSwatches"></div>
-  </div>
+  <div id="outfitSection">
+    <div class="swatch-group">
+      <span class="swatch-label">Shirt color</span>
+      <div class="swatches" id="shirtSwatches"></div>
+    </div>
 
-  <div class="swatch-group">
-    <span class="swatch-label">Pants color</span>
-    <div class="swatches" id="pantSwatches"></div>
+    <div class="swatch-group">
+      <span class="swatch-label">Pants color</span>
+      <div class="swatches" id="pantSwatches"></div>
+    </div>
   </div>
 
   <label class="checkbox">

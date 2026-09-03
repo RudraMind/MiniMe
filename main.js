@@ -32,6 +32,7 @@ const store = new Store({
     housePos: null,
     followCursor: false,
     focusMoods: false,
+    character: 'raj', // 'raj' | 'hanu'
     palName: 'Chotu',
     focusSessionMin: 25,
     focusBreakMin: 5,
@@ -71,9 +72,57 @@ const CONFIG_MIN = {
   focusBreakMin: 1,
 };
 
+// Character metadata the MAIN process needs (behaviour). The art tables live in
+// renderer/animations.js — every flourish name here must exist there, or it
+// silently falls back to the idle pose.
+const CHARACTERS = {
+  raj: {
+    label: 'Raj',
+    defaultName: 'Chotu',
+    flourishes: { phone: 3, crossed: 3, splash: 2, thumbsup: 2, glasses: 2, dance: 1, jump: 1, sit: 2 },
+  },
+  hanu: {
+    label: 'Hanu',
+    defaultName: 'Hanu',
+    flourishes: { sit: 3, wave: 2, jump: 1 },
+    // Hanu has no phone/arms-crossed/dance art, so app reactions are mapped
+    // onto poses he does have. Without this they'd resolve to idle and the
+    // reaction would be invisible.
+    moods: { phone: 'sit', crossed: 'sit', wave: 'wave', dance: 'jump', point: 'wave' },
+  },
+  boy: {
+    label: 'Boy',
+    defaultName: 'Bud',
+    flourishes: { sit: 3, wave: 2, jump: 2, stretch: 1 },
+    moods: { phone: 'sit', crossed: 'stretch', wave: 'wave', dance: 'jump', point: 'wave' },
+  },
+  girl: {
+    label: 'Girl',
+    defaultName: 'Pip',
+    flourishes: { sit: 3, wave: 2, jump: 2, stretch: 1 },
+    moods: { phone: 'sit', crossed: 'stretch', wave: 'wave', dance: 'jump', point: 'wave' },
+  },
+  dog: {
+    label: 'Dog',
+    defaultName: 'Scout',
+    flourishes: { sit: 3, wave: 2, lie: 2 },
+    moods: { phone: 'lie', crossed: 'sit', wave: 'wave', dance: 'run', point: 'wave' },
+  },
+};
+const DEFAULT_CHARACTER = 'raj';
+
+function characterKey() {
+  const k = store.get('character', DEFAULT_CHARACTER);
+  return CHARACTERS[k] ? k : DEFAULT_CHARACTER;
+}
+
+function character() {
+  return CHARACTERS[characterKey()];
+}
+
 function palName() {
-  const n = store.get('palName', 'Chotu');
-  return (typeof n === 'string' && n.trim()) ? n.trim() : 'Chotu';
+  const n = store.get('palName', '');
+  return (typeof n === 'string' && n.trim()) ? n.trim() : character().defaultName;
 }
 
 function setConfig(patch) {
@@ -378,6 +427,42 @@ function stopFocusSession({ fromPal = false } = {}) {
   if (tray) tray._rebuild();
 }
 
+// Translate an app-reaction pose onto something the active character can
+// actually perform (see the `moods` maps above).
+function moodFor(mood) {
+  const map = character().moods;
+  if (!map) return mood;
+  return map[mood] || 'wave';
+}
+
+function setCharacter(key) {
+  if (!CHARACTERS[key] || key === characterKey()) return;
+  store.set('character', key);
+  // The name follows the character, so menus don't read "Send Chotu home"
+  // while Hanu is on screen. It stays editable in Settings afterwards.
+  store.set('palName', CHARACTERS[key].defaultName);
+  pal.cfg.flourishes = CHARACTERS[key].flourishes;
+  if (tray) {
+    tray.setToolTip(palName());
+    tray._rebuild();
+  }
+  sendTo(chotuWindow, 'config:update', getConfig());
+}
+
+// A submenu rather than a toggle, now that there are more than two.
+function switchCharacterItem() {
+  const active = characterKey();
+  return {
+    label: 'Character',
+    submenu: Object.entries(CHARACTERS).map(([key, c]) => ({
+      label: c.label,
+      type: 'radio',
+      checked: key === active,
+      click: () => setCharacter(key),
+    })),
+  };
+}
+
 function buildHouseMenu() {
   const isSleeping = pal.state === 'SLEEPING';
   const template = isSleeping
@@ -389,7 +474,7 @@ function buildHouseMenu() {
         { label: 'Go to sleep', click: () => pal.requestSleep() },
         { label: 'Settings…', click: createSettingsWindow },
       ];
-  template.push({ type: 'separator' }, { label: `Restart ${palName()}`, click: restartApp });
+  template.push({ type: 'separator' }, switchCharacterItem(), { label: `Restart ${palName()}`, click: restartApp });
   return Menu.buildFromTemplate(template);
 }
 
@@ -411,7 +496,7 @@ function buildPalMenu() {
         { label: 'Go to sleep', click: () => pal.requestSleep() },
         { label: 'Settings…', click: createSettingsWindow },
       ];
-  template.push({ type: 'separator' }, { label: `Restart ${palName()}`, click: restartApp });
+  template.push({ type: 'separator' }, switchCharacterItem(), { label: `Restart ${palName()}`, click: restartApp });
   return Menu.buildFromTemplate(template);
 }
 
@@ -439,6 +524,7 @@ function createTray() {
       { label: 'Drink now', click: () => pal.requestReminder('water') },
       { label: 'Stretch now', click: () => pal.requestReminder('stretch') },
       { type: 'separator' },
+      switchCharacterItem(),
       { label: 'Settings…', click: createSettingsWindow },
       { label: `Restart ${palName()}`, click: restartApp },
       { label: 'Quit', click: () => app.exit(0) },
@@ -512,7 +598,7 @@ function handleFocusApp(app) {
   if (!mood) return;
   const now = Date.now();
   if (now - lastReactionAt < FOCUS_REACTION_COOLDOWN_MS) return;
-  if (pal.playOneShot(mood, 1600)) lastReactionAt = now;
+  if (pal.playOneShot(moodFor(mood), 1600)) lastReactionAt = now;
 }
 
 function startFocusWatcher() {
@@ -711,6 +797,15 @@ function wireIpc() {
     if (typeof patch.focusMoods === 'boolean') {
       patch.focusMoods ? startFocusWatcher() : stopFocusWatcher();
     }
+    if (typeof patch.character === 'string') {
+      // Settings can change the character too; keep the runtime in step with
+      // the stored value (menu switching goes through setCharacter()).
+      pal.cfg.flourishes = character().flourishes;
+      if (tray) {
+        tray.setToolTip(palName());
+        tray._rebuild();
+      }
+    }
     if (typeof patch.palName === 'string' && tray) {
       tray.setToolTip(palName());
       tray._rebuild();
@@ -730,6 +825,7 @@ function initPal() {
     startY: (bounds.minY + bounds.maxY) / 2,
     walkSpeed: cfg.walkSpeed,
     bubbleMs: cfg.bubbleMs,
+    flourishes: character().flourishes,
   });
   pal.setFollow(!!cfg.followCursor);
   if (cfg.focusMoods) startFocusWatcher();
@@ -786,6 +882,10 @@ function checkRequiredAssets() {
     path.join(__dirname, 'assets', 'tray.png'),
     path.join(__dirname, 'assets', 'pal', 'stand_01.png'),
     path.join(__dirname, 'assets', 'pal', 'manifest.json'),
+    path.join(__dirname, 'assets', 'hanu', 'hanu_wave_01.png'),
+    path.join(__dirname, 'assets', 'boy', 'boy_wave_01.png'),
+    path.join(__dirname, 'assets', 'girl', 'girl_wave_01.png'),
+    path.join(__dirname, 'assets', 'dog', 'dog_sit_01.png'),
   ];
   const missing = required.filter((p) => !fs.existsSync(p));
   if (missing.length === 0) return true;

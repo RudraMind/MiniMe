@@ -45,7 +45,14 @@ const FLOURISH_MS = {
   jump: 500,
   glasses: 900,
   sit: 2000,
+  wave: 900,
+  stretch: 1400,
+  lie: 2500,
+  run: 900,
 };
+// Characters supply their own flourish sets, so a name may have no entry here.
+// Without a fallback the phase timer becomes NaN and the pose never times out.
+const FLOURISH_DEFAULT_MS = 1200;
 const FLOURISH_WEIGHTS = { phone: 3, crossed: 3, splash: 2, thumbsup: 2, glasses: 2, dance: 1, jump: 1, sit: 2 };
 const FLOURISHES = Object.keys(FLOURISH_WEIGHTS);
 
@@ -83,6 +90,9 @@ class PalState extends EventEmitter {
       bubbleMs: cfg.bubbleMs ?? 8000,
       idleMinMs: cfg.idleMinMs ?? 8000,
       idleMaxMs: cfg.idleMaxMs ?? 20000,
+      // Which idle flourishes this character can perform, as name -> weight.
+      // Characters have different art, so the caller supplies the set.
+      flourishes: cfg.flourishes ?? FLOURISH_WEIGHTS,
     };
 
     this.state = STATES.IDLE;
@@ -317,7 +327,7 @@ class PalState extends EventEmitter {
     this.bubbleText = null;
     this._dragging = false;
     this.state = STATES.GOING_HOME;
-    this.animation = 'walk';
+    this.animation = 'run';
     this.targetX = this.cfg.houseDoor.x;
     this.targetY = this.cfg.houseDoor.y;
     return true;
@@ -424,9 +434,9 @@ class PalState extends EventEmitter {
             const p = this._randomPoint();
             this._beginWalk(p.x, p.y);
           } else {
-            this._flourish = weightedPick(FLOURISH_WEIGHTS);
+            this._flourish = weightedPick(this.cfg.flourishes);
             this.animation = this._flourish;
-            this._phaseTimer = FLOURISH_MS[this._flourish];
+            this._phaseTimer = FLOURISH_MS[this._flourish] ?? FLOURISH_DEFAULT_MS;
             this._flourishActive = true;
           }
           this._idleTimer = randRange(this.cfg.idleMinMs, this.cfg.idleMaxMs);
@@ -517,7 +527,7 @@ class PalState extends EventEmitter {
         this._phaseTimer -= dtMs;
         if (this._phaseTimer <= 0) {
           this.state = STATES.EXITING_HOUSE;
-          this.animation = 'walk';
+          this.animation = 'run';
           this.x = this.cfg.houseDoor.x;
           this.y = this.cfg.houseDoor.y;
           const p = this._randomPoint();
