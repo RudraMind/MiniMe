@@ -1,8 +1,8 @@
 # MiniMe
 
-A pixel-art desktop companion for Windows. MiniMe walks along the edge of your
-screen, wanders around on its own, and nudges you to stretch and drink water.
-Right-click its house to send it to bed.
+A pixel-art desktop companion for Windows. MiniMe roams your desktop, sits
+down and works alongside you during focus sessions, and nudges you to stretch
+and drink water. Right-click the house to send them to bed.
 
 > Windows only. See [Platform support](#platform-support).
 
@@ -31,7 +31,7 @@ Right-click its house to send it to bed.
   remembered. Right-click it to send them to bed, which pauses reminders.
 - **Drag them around** — pick them up and drop them anywhere; they hold that
   spot for a few seconds before carrying on.
-- **Give them a name** — used throughout the menus. Defaults to `Raj`.
+- **Give them a name** — used throughout the menus. Defaults to `Chotu`.
 - **Outfit colors** — pick a shirt and pants color (red, blue, yellow, black,
   green, orange, or the original art) from Settings.
 - **Quiet hours** — optional auto-sleep overnight (off by default).
@@ -57,7 +57,8 @@ MiniMe installs per-user, so **no administrator rights are needed**.
 
 ### Option 2 — Run from source
 
-Requires [Node.js](https://nodejs.org/) 18 or newer.
+Requires [Node.js](https://nodejs.org/) 18 or newer ([download the LTS
+version](https://nodejs.org/) and click through the installer).
 
 ```bash
 git clone https://github.com/RudraMind/Mini-Assistant.git
@@ -66,14 +67,23 @@ npm install
 npm start
 ```
 
-That's it — all sprite art ships in the repo already, so there's no asset
-build step and no native image toolchain required just to run it.
+That's it — all art ships in the repo already, so there's no asset build step
+and no image toolchain needed just to run it.
+
+**Not comfortable with a terminal?** After cloning (or after downloading the
+repo as a ZIP and extracting it), just **double-click `START-MINIME.bat`**. It
+installs everything the first time and starts MiniMe, and it tells you what to
+do if Node.js is missing. Every run after that, double-click the same file.
+
+> Running from source keeps a terminal window open — closing it closes MiniMe.
+> For everyday use, the installer in Option 1 is nicer: it runs on its own and
+> the **Start with Windows** setting will stick across reboots.
 
 ---
 
 ## Using it
 
-MiniMe appears on the top edge of your primary monitor and starts wandering.
+MiniMe appears on your primary monitor and starts wandering.
 
 | Action | How |
 |---|---|
@@ -162,7 +172,7 @@ main.js            app lifecycle, windows, tray, timers, screen geometry
 state.js           pal state machine — pure logic, no Electron imports
 timers.js          pausable stretch/water schedulers
 preload.js         contextBridge IPC surface
-renderer/          pet, overlay, and settings UIs (plain HTML/CSS/JS)
+renderer/          chotu, overlay, and settings UIs (plain HTML/CSS/JS)
 tools/             sprite/house slicers + icon generator (optional, dev only)
 assets/pal/        the 31 generated sprite frames
 assets/house/      the 3 generated house states
@@ -181,7 +191,7 @@ node -e "const {PalState}=require('./state.js'); /* ... */"
 Issues and pull requests are welcome. If you're reporting a bug about MiniMe
 being in the wrong place, `main.js` (screen geometry) and `state.js` (position
 logic) are the files to name; for wrong sprites, jitter, or wrong facing, it's
-`renderer/pet.js` and `renderer/pet.css`.
+`renderer/chotu.js` and `renderer/chotu.css`.
 
 ## License
 

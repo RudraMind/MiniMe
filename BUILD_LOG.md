@@ -142,7 +142,7 @@ app.
 **Symptom:** switching "Lane orientation" to Vertical in Settings made the
 pal disappear entirely — house was visible, pal was not, anywhere.
 
-**Root cause:** the renderer (`renderer/pet.js`) sets the pal's screen
+**Root cause:** the renderer (`renderer/chotu.js`) sets the pal's screen
 position by writing an inline style each tick: `palEl.style.left = ...` in
 horizontal mode, `palEl.style.top = ...` in vertical mode. The CSS for
 vertical mode (`body.vertical #pal { left: 50%; ... }`) was written to
@@ -322,7 +322,7 @@ turned several previously-harmless issues into serious ones.
 
 | # | Issue | Why it matters | Fix |
 |---|---|---|---|
-| 1 | **The whole screen could stop accepting clicks.** Hover tracking is deliberately skipped during a drag, so `hovering` stayed `true` after dropping the pal with the cursor elsewhere — leaving the window non-click-through. | Harmless as a 140px strip; with a full-screen window it swallows *every* click on the desktop, taskbar, and other apps until the next mousemove. | `finishDrag()` in `renderer/pet.js` re-evaluates hover immediately using the last known cursor position. |
+| 1 | **The whole screen could stop accepting clicks.** Hover tracking is deliberately skipped during a drag, so `hovering` stayed `true` after dropping the pal with the cursor elsewhere — leaving the window non-click-through. | Harmless as a 140px strip; with a full-screen window it swallows *every* click on the desktop, taskbar, and other apps until the next mousemove. | `finishDrag()` in `renderer/chotu.js` re-evaluates hover immediately using the last known cursor position. |
 | 2 | **Dragging the house wrote to disk on every mousemove.** `electron-store` persists synchronously. | Measured at ~1.5ms per write; a 3-second drag at ~90Hz is ~270 writes ≈ **408ms of blocking disk I/O** on the same thread as the 16ms animation tick — visible stutter plus pointless SSD wear. | Position is held in memory (`liveHousePos`) during the drag and written once on drop (`commitHousePos()`). |
 | 3 | **Holding the pal still for 1.5s dropped it.** The drag watchdog only re-armed on drag *messages*, and holding the mouse still produces none. | The watchdog couldn't distinguish "user is holding it" from "renderer died". | The renderer sends a heartbeat every 400ms while a drag is held; watchdog raised to 2s. |
 | 4 | **The focus watcher could silently stop forever.** If the PowerShell helper wedged mid-request, `focusPending` stayed `true` and no further polls were issued. | Moods would quietly stop with no error and no recovery. | The poll loop times out a stuck request after 3 intervals and resets. |
@@ -358,7 +358,7 @@ Sprite size lives in `tools/slice-sheet.js` (`CANVAS`) and house size in
 `tools/slice-house.js` (`OUT_W`). Both are re-sliced from the high-resolution
 source rather than downscaling an already-generated PNG, which would soften the
 pixel art. Changing either means updating the matching `PAL_W`/`PAL_H` or
-`HOUSE_W`/`HOUSE_H` constants in `main.js` and `renderer/pet.js`, plus the CSS.
+`HOUSE_W`/`HOUSE_H` constants in `main.js` and `renderer/chotu.js`, plus the CSS.
 
 If a new sheet ever produces a raw component count that isn't exactly 31
 after filtering, `tools/slice-sheet.js` stops and prints the count rather

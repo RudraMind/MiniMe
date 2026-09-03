@@ -16,8 +16,8 @@ const SHEET_PATH = path.join(__dirname, '..', 'assets', 'reference', 'spriteshee
 const OUT_DIR = path.join(__dirname, '..', 'assets', 'pal');
 const BG = [23, 29, 38];
 const TOL = 40;
-// Rendered sprite size. Must match PAL_W/PAL_H in main.js and renderer/pet.js
-// and the #pal size in renderer/pet.css.
+// Rendered sprite size. Must match PAL_W/PAL_H in main.js and renderer/chotu.js
+// and the #pal size in renderer/chotu.css.
 const CANVAS = 72;
 
 const NAMES = [

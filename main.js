@@ -7,7 +7,7 @@ const { PalState, HOUSE } = require('./state');
 const { ReminderTimers } = require('./timers');
 
 // Must match the size the slicer writes (tools/slice-house.js OUT_W) and the
-// values in renderer/pet.js. The art is square.
+// values in renderer/chotu.js. The art is square.
 const HOUSE_W = 120;
 const HOUSE_H = 120;
 const PAL_W = 72;
@@ -23,7 +23,7 @@ const store = new Store({
     walkSpeed: 1.4,
     startWithWindows: false,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
-    petVisible: true,
+    chotuVisible: true,
     lastState: 'IDLE',
     shirtColor: 'default',
     pantColor: 'default',
@@ -32,7 +32,7 @@ const store = new Store({
     housePos: null,
     followCursor: false,
     focusMoods: false,
-    palName: 'Raj',
+    palName: 'Chotu',
     focusSessionMin: 25,
     focusBreakMin: 5,
     // Where the pal sits during a focus session; null = center of the screen.
@@ -41,7 +41,14 @@ const store = new Store({
   },
 });
 
-let petWindow = null;
+// Carry over the pre-rename key so an existing install keeps its hide/show
+// choice instead of silently reverting to visible.
+if (store.has('petVisible') && !store.has('chotuVisible')) {
+  store.set('chotuVisible', store.get('petVisible'));
+  store.delete('petVisible');
+}
+
+let chotuWindow = null;
 let overlayWindow = null;
 let settingsWindow = null;
 let tray = null;
@@ -65,8 +72,8 @@ const CONFIG_MIN = {
 };
 
 function palName() {
-  const n = store.get('palName', 'Raj');
-  return (typeof n === 'string' && n.trim()) ? n.trim() : 'Raj';
+  const n = store.get('palName', 'Chotu');
+  return (typeof n === 'string' && n.trim()) ? n.trim() : 'Chotu';
 }
 
 function setConfig(patch) {
@@ -98,6 +105,18 @@ function roamBounds() {
     minY: workArea.y,
     maxY: workArea.y + workArea.height - PAL_H,
   };
+}
+
+// Best-effort IPC to a renderer. During teardown a window can report itself
+// alive while its render frame is already gone, so isDestroyed() alone isn't
+// enough — Electron throws "Render frame was disposed" from send().
+function sendTo(win, channel, payload) {
+  if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
+  try {
+    win.webContents.send(channel, payload);
+  } catch {
+    // Window is going away mid-send; nothing to do.
+  }
 }
 
 // Position held in memory while the house is being dragged. electron-store
@@ -136,15 +155,15 @@ function houseDoor() {
   };
 }
 
-// The pet window now covers the entire work area so the pal can walk anywhere.
+// The Chotu window now covers the entire work area so the pal can walk anywhere.
 // It stays click-through except while the cursor is over the pal or the house.
-function petWindowBounds() {
+function chotuWindowBounds() {
   return { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height };
 }
 
-function createPetWindow() {
-  const bounds = petWindowBounds();
-  petWindow = new BrowserWindow({
+function createChotuWindow() {
+  const bounds = chotuWindowBounds();
+  chotuWindow = new BrowserWindow({
     ...bounds,
     frame: false,
     transparent: true,
@@ -160,10 +179,20 @@ function createPetWindow() {
       nodeIntegration: false,
     },
   });
-  petWindow.setAlwaysOnTop(true, 'screen-saver');
-  petWindow.setIgnoreMouseEvents(true, { forward: true });
-  petWindow.loadFile(path.join(__dirname, 'renderer', 'pet.html'));
-  petWindow.on('closed', () => { petWindow = null; });
+  chotuWindow.setAlwaysOnTop(true, 'screen-saver');
+  chotuWindow.setIgnoreMouseEvents(true, { forward: true });
+  chotuWindow.loadFile(path.join(__dirname, 'renderer', 'chotu.html'));
+  // This window is only ever closed when the app is shutting down (Hide uses
+  // hide(), not close()). Stop the tick immediately so it can't keep pushing
+  // state into a render frame that is already being torn down — Electron logs
+  // "Render frame was disposed" internally for that, which try/catch can't stop.
+  chotuWindow.on('close', () => {
+    if (tickHandle) {
+      clearInterval(tickHandle);
+      tickHandle = null;
+    }
+  });
+  chotuWindow.on('closed', () => { chotuWindow = null; });
 }
 
 function openOverlay(kind) {
@@ -184,14 +213,14 @@ function openOverlay(kind) {
   overlayWindow.setAlwaysOnTop(true, 'screen-saver');
   overlayWindow.loadFile(path.join(__dirname, 'renderer', 'overlay.html'));
 
-  // The pet window is now full-screen and also at 'screen-saver' level, so
+  // The Chotu window is now full-screen and also at 'screen-saver' level, so
   // z-order between the two isn't guaranteed — the pal could wander across the
   // overlay. Hide it for the duration; the overlay renders its own pal.
-  const petWasVisible = petWindow && !petWindow.isDestroyed() && petWindow.isVisible();
-  if (petWasVisible) petWindow.hide();
-  const restorePetWindow = () => {
-    if (petWasVisible && petWindow && !petWindow.isDestroyed() && store.get('petVisible', true)) {
-      petWindow.showInactive();
+  const chotuWasVisible = chotuWindow && !chotuWindow.isDestroyed() && chotuWindow.isVisible();
+  if (chotuWasVisible) chotuWindow.hide();
+  const restoreChotuWindow = () => {
+    if (chotuWasVisible && chotuWindow && !chotuWindow.isDestroyed() && store.get('chotuVisible', true)) {
+      chotuWindow.showInactive();
     }
   };
 
@@ -211,13 +240,13 @@ function openOverlay(kind) {
 
   overlayWindow.webContents.once('did-finish-load', () => {
     overlayWindow.focus();
-    overlayWindow.webContents.send('overlay:open', { seconds: remaining });
+    sendTo(overlayWindow, 'overlay:open', { seconds: remaining });
     readyForBlurClose = true;
   });
 
   const countdownHandle = setInterval(() => {
     remaining -= 1;
-    if (overlayWindow) overlayWindow.webContents.send('overlay:countdown', { remaining });
+    sendTo(overlayWindow, 'overlay:countdown', { remaining });
     if (remaining <= 0) finish('timeout');
   }, 1000);
 
@@ -235,7 +264,7 @@ function openOverlay(kind) {
     ipcMain.removeListener('overlay:dismiss', dismissListener);
     globalShortcut.unregister('Escape');
     overlayWindow = null;
-    restorePetWindow();
+    restoreChotuWindow();
   });
 }
 
@@ -396,11 +425,11 @@ function createTray() {
         click: () => (pal.state === 'SLEEPING' ? pal.requestWake() : pal.requestSleep()),
       },
       {
-        label: store.get('petVisible', true) ? `Hide ${palName()}` : `Show ${palName()}`,
+        label: store.get('chotuVisible', true) ? `Hide ${palName()}` : `Show ${palName()}`,
         click: () => {
-          const visible = !store.get('petVisible', true);
-          store.set('petVisible', visible);
-          if (petWindow) visible ? petWindow.showInactive() : petWindow.hide();
+          const visible = !store.get('chotuVisible', true);
+          store.set('chotuVisible', visible);
+          if (chotuWindow) visible ? chotuWindow.showInactive() : chotuWindow.hide();
         },
       },
       { type: 'separator' },
@@ -573,16 +602,16 @@ function startTickLoop() {
     if (store.get('followCursor', false)) pollCursor();
 
     pal.tick(TICK_MS);
-    if (petWindow && !petWindow.isDestroyed()) {
-      const s = pal.serialize();
-      // Screen coords -> window-relative coords for the renderer.
-      s.x -= workArea.x;
-      s.y -= workArea.y;
-      const h = housePosition();
-      s.houseX = h.x - workArea.x;
-      s.houseY = h.y - workArea.y;
-      petWindow.webContents.send('pal:state', s);
-    }
+
+    const s = pal.serialize();
+    // Screen coords -> window-relative coords for the renderer.
+    s.x -= workArea.x;
+    s.y -= workArea.y;
+    const h = housePosition();
+    s.houseX = h.x - workArea.x;
+    s.houseY = h.y - workArea.y;
+    sendTo(chotuWindow, 'pal:state', s);
+
     // electron-store writes to disk synchronously on every set — only persist
     // when the state actually changes, not 60x a second.
     if (pal.state !== lastPersistedState) {
@@ -594,12 +623,12 @@ function startTickLoop() {
 
 function wireIpc() {
   ipcMain.on('hover:enter', () => {
-    if (petWindow) petWindow.setIgnoreMouseEvents(false);
+    if (chotuWindow) chotuWindow.setIgnoreMouseEvents(false);
   });
   ipcMain.on('hover:leave', () => {
-    if (petWindow) petWindow.setIgnoreMouseEvents(true, { forward: true });
+    if (chotuWindow) chotuWindow.setIgnoreMouseEvents(true, { forward: true });
   });
-  // Drag. If the cursor leaves the pet window mid-drag the renderer stops
+  // Drag. If the cursor leaves the Chotu window mid-drag the renderer stops
   // sending updates and may never deliver a mouseup, so a watchdog puts the pal
   // down rather than leaving it stuck in DRAGGED forever.
   let dragWatchdog = null;
@@ -658,9 +687,9 @@ function wireIpc() {
 
   ipcMain.on('pal:click', (_e, { button, target }) => {
     if (target === 'house' && button === 'right') {
-      buildHouseMenu().popup({ window: petWindow });
+      buildHouseMenu().popup({ window: chotuWindow });
     } else if (target === 'pal' && button === 'right') {
-      buildPalMenu().popup({ window: petWindow });
+      buildPalMenu().popup({ window: chotuWindow });
     } else if (target === 'pal' && button === 'left') {
       pal.wave();
     }
@@ -686,7 +715,7 @@ function wireIpc() {
       tray.setToolTip(palName());
       tray._rebuild();
     }
-    if (petWindow) petWindow.webContents.send('config:update', cfg);
+    sendTo(chotuWindow, 'config:update', cfg);
     return cfg;
   });
 }
@@ -777,15 +806,15 @@ app.whenReady().then(() => {
   initTimers();
   wireIpc();
   createTray();
-  createPetWindow();
+  createChotuWindow();
   startTickLoop();
   setInterval(checkQuietHours, 60 * 1000);
 
   screen.on('display-metrics-changed', () => {
     workArea = computeWorkArea();
     pal.setBounds(roamBounds(), houseDoor());
-    if (petWindow) {
-      petWindow.setBounds(petWindowBounds());
+    if (chotuWindow) {
+      chotuWindow.setBounds(chotuWindowBounds());
     }
   });
 });

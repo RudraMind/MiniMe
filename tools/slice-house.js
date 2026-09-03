@@ -28,7 +28,7 @@ const TOL = 25;
 const NAMES = ['house_closed', 'house_open', 'house_night'];
 // Rendered house size. Resampled once from the ~471px source rather than
 // downscaling an already-sliced 160px PNG, which would soften the pixel art.
-// Must match HOUSE_W/HOUSE_H in main.js and renderer/pet.js.
+// Must match HOUSE_W/HOUSE_H in main.js and renderer/chotu.js.
 const OUT_W = 120;
 
 function bgDiff(r, g, b) {

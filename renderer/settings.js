@@ -40,7 +40,7 @@ async function load() {
   buildSwatches('shirtSwatches', shirtColor, (key) => (shirtColor = key));
   buildSwatches('pantSwatches', pantColor, (key) => (pantColor = key));
 
-  document.getElementById('palName').value = cfg.palName || 'Raj';
+  document.getElementById('palName').value = cfg.palName || 'Chotu';
   document.getElementById('followCursor').checked = !!cfg.followCursor;
   document.getElementById('focusMoods').checked = !!cfg.focusMoods;
 }
@@ -57,7 +57,7 @@ document.getElementById('save').addEventListener('click', async () => {
   patch.shirtColor = shirtColor;
   patch.pantColor = pantColor;
   const name = document.getElementById('palName').value.trim();
-  patch.palName = name || 'Raj';
+  patch.palName = name || 'Chotu';
   patch.followCursor = document.getElementById('followCursor').checked;
   patch.focusMoods = document.getElementById('focusMoods').checked;
   await window.pixelpal.invoke('config:set', patch);
