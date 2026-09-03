@@ -18,22 +18,21 @@
 
 <table>
 <tr>
-<td width="42%" align="center">
-  <img src="docs/img/walk.gif" alt="MiniMe walking" width="220">
+<td width="40%" align="center">
+  <img src="docs/img/walk.gif" alt="MiniMe walking" width="200">
 </td>
-<td width="58%">
+<td width="60%">
 
-### Working alone is the hard part
+### A coworker who sits with you
 
-MiniMe is a pixel-art companion who lives on your desktop. They wander around,
-get on with their own thing, and — when you start a focus session — **sit down
-and work right alongside you**.
+MiniMe wanders your desktop and does their own thing.
 
-It's a trick called *body doubling*: having someone else visibly working nearby
-makes it easier to start a task and stay with it. MiniMe is that someone, minus
-the small talk.
+Start a focus session and they **sit down and work beside you**.
 
-They'll also nudge you to stretch and drink water, because you won't.
+That's *body doubling* — someone visibly working nearby makes it easier to
+start, and easier to keep going.
+
+They'll also remind you to stretch and drink water.
 
 </td>
 </tr>
@@ -45,24 +44,23 @@ They'll also nudge you to stretch and drink water, because you won't.
 
 <img src="docs/img/focus.png" alt="Start a session, they work too, break together" width="100%">
 
-Start a session and they walk over, sit down, and work for 25 minutes.
-**All reminders go quiet** — an uninterrupted block is the whole point. When the
-timer's up they stand, stretch with you for 5 minutes, then get back to it.
+- They sit and work for **25 minutes**
+- **Reminders go silent** — that's the point
+- Then you stretch together for **5 minutes**, and repeat
+- Drag them anywhere; they'll settle in there
 
-Drag them anywhere while they're working and they'll settle in at the new spot.
-Session and break lengths are yours to set.
+Lengths are yours to set.
 
 ---
 
-## 💧 Nudges that respect you
+## 💧 Nudges, not nags
 
-|  | |
+| | |
 |---|---|
-| **Stretch** | Every hour they walk over and hold up a speech bubble. That's it — it never blocks you, never steals focus. |
-| **Water** | Every 45 minutes the screen dims with a 10-second countdown. **Esc skips it instantly**, and it closes itself the moment you Alt-Tab away. |
+| **Stretch** — hourly | A speech bubble. Never blocks you. |
+| **Water** — every 45 min | Screen dims, 10-second countdown. **Esc skips it.** Alt-Tab closes it. |
 
-It will never block `Ctrl+Alt+Del`, `Alt+Tab`, or Task Manager. If you're in the
-middle of something, you win — always.
+Never blocks `Ctrl+Alt+Del`, `Alt+Tab`, or Task Manager. You always win.
 
 ---
 
@@ -70,11 +68,10 @@ middle of something, you win — always.
 
 <img src="docs/img/poses.png" alt="idle, walk, work, stretch, water, wave, dance, phone, focused, thumbs up" width="100%">
 
-Between walks they dance, check their phone, cross their arms, sit down for a
-rest. Left-click for a wave. Pick them up and drop them anywhere on screen.
+They dance, check their phone, cross their arms. Left-click to get a wave.
+Drag them anywhere.
 
-**Optionally**, they'll follow your cursor around and sit down to relax when you
-stop moving — or react to whatever app you switch to, with a pose to match.
+Optional: **follow your cursor**, or **react to the app you're in**.
 
 ---
 
@@ -82,37 +79,34 @@ stop moving — or react to whatever app you switch to, with a pose to match.
 
 <img src="docs/img/outfits.png" alt="Outfit colours: original, red, blue, green, orange, yellow" width="100%">
 
-Pick a shirt and trouser colour, and **give them a name** — it's used everywhere
-in the menus. They're called `Chotu` out of the box.
+Pick their shirt and trousers. Give them a name — `Chotu` by default.
 
 ---
 
-## 🏠 And a home to go back to
+## 🏠 Send them home
 
 <img src="docs/img/house.png" alt="House states: home, door open, asleep" width="100%">
 
-Right-click the house to send them to bed. They walk all the way home, head
-inside, and the lights go out — reminders pause until you wake them.
-**Drag the house wherever you like**; it stays there.
+Right-click the house → bed. They walk home, head inside, lights out.
+Reminders pause until you wake them. Drag the house anywhere.
 
 ---
 
 ## Install
 
-### Option 1 — the installer *(easiest)*
+### The installer *(easiest)*
 
-**[⬇ Download the latest release](https://github.com/RudraMind/MiniMe/releases/latest)**, run it, done.
-It installs per-user, so **no administrator rights are needed**.
+**[⬇ Download the latest release](https://github.com/RudraMind/MiniMe/releases/latest)** → run it → done.
+Installs per-user, **no admin rights**.
 
 > [!NOTE]
-> Windows will show a **"Windows protected your PC"** screen, because the
-> installer isn't code-signed (a signing certificate costs money). Click
-> **More info → Run anyway**. If you'd rather not trust that, build it yourself
-> from source below — the result is identical.
+> Windows shows **"Windows protected your PC"** because the installer isn't
+> code-signed. Click **More info → Run anyway**. Or build it yourself below —
+> same result.
 
-### Option 2 — run from source
+### From source
 
-Needs [Node.js](https://nodejs.org/) 18+ *(grab the LTS build and click through)*.
+Needs [Node.js](https://nodejs.org/) 18+.
 
 ```bash
 git clone https://github.com/RudraMind/MiniMe.git
@@ -121,90 +115,73 @@ npm install
 npm start
 ```
 
-All the artwork ships in the repo, so there's no build step and no image
-toolchain to install.
+All artwork ships in the repo — no build step.
 
-> **Don't use a terminal?** Download the repo as a ZIP, extract it, and
-> **double-click `START-MINIME.bat`**. It sets everything up the first time and
-> starts MiniMe. If Node.js is missing it tells you exactly what to get.
+> **No terminal?** Download the ZIP, extract, **double-click `START-MINIME.bat`**.
 
 ---
 
-## Using it
+## Controls
 
 | Action | How |
 |---|---|
-| Start / stop a focus session | Right-click them, or the tray icon |
-| Move them | Just drag them |
-| Move their house | Drag the house |
+| Focus session | Right-click them, or the tray icon |
+| Move them / the house | Drag it |
 | Wave | Left-click them |
-| Send to bed / wake up | Right-click the house |
-| Reminder right now | Tray icon → **Drink now** / **Stretch now** |
-| Settings | Right-click anything → **Settings…** |
-| Quit | Tray icon → **Quit** |
+| Bed / wake | Right-click the house |
+| Reminder now | Tray → **Drink now** / **Stretch now** |
+| Settings | Right-click → **Settings…** |
+| Quit | Tray → **Quit** |
 
-Closing a window doesn't quit MiniMe — they live in the system tray.
-
-**Settings** covers their name, focus and break lengths, reminder intervals,
-walk speed, outfit colours, cursor-following, app moods, quiet hours, and
-start-with-Windows. Everything persists across restarts.
+They live in the tray — closing a window won't quit them.
 
 ---
 
 ## 🔒 Privacy
 
-MiniMe has **no network code at all**. Nothing is uploaded, no analytics, no
-account, no telemetry. Settings live in a plain JSON file on your machine
-(`%APPDATA%\mini-me\config.json`).
+**No network code. Nothing leaves your machine.** No analytics, no account.
+Settings sit in `%APPDATA%\mini-me\config.json`.
 
-The optional *"react to my apps"* feature reads only the **name** of the
-foreground app — `chrome`, `code` — and never window titles, page names, URLs,
-or filenames. It's off by default, and the name it reads is used to pick a pose
-and then discarded.
+The optional app-reactions feature reads only the foreground app's **name**
+(`chrome`, `code`) — never window titles, URLs, or filenames. Off by default.
 
 ---
 
 ## Good to know
 
-- **Windows only.** MiniMe leans on Windows behaviour for transparent,
-  always-on-top, click-through windows. No macOS or Linux build.
-- **Primary monitor only.** Multi-monitor setups won't break it, but they'll
-  stay on your main screen.
-- **The artwork has no up/down walking poses**, so vertical movement uses the
-  side-on walk. You'll notice it if you look for it.
+- **Windows only** — relies on Windows transparent, click-through windows
+- **Primary monitor only** — won't break on multi-monitor, just stays put
+- **No up/down walk poses** in the art, so vertical movement uses the side view
 
 ---
 
 ## For developers
 
 ```
-main.js       app lifecycle, windows, tray, timers, screen geometry
-state.js      the state machine — pure logic, zero Electron imports
+main.js       lifecycle, windows, tray, timers, geometry
+state.js      state machine — pure logic, no Electron imports
 timers.js     pausable reminder schedulers
-preload.js    the contextBridge IPC surface
-renderer/     chotu, overlay and settings UIs — plain HTML/CSS/JS
+preload.js    contextBridge IPC surface
+renderer/     chotu, overlay, settings UIs — plain HTML/CSS/JS
 tools/        sprite + house slicers, icon and README art generators
 ```
 
-`state.js` has no Electron dependency on purpose, so behaviour can be tested
-from plain Node without launching anything:
+`state.js` has no Electron dependency, so behaviour is testable from plain Node:
 
 ```bash
 node -e "const {PalState}=require('./state.js'); /* drive tick() and assert */"
 ```
 
-Build the installer with `npm run dist`. Regenerating artwork needs the optional
-deps: `npm install sharp to-ico`, then `npm run assets` and
-`node tools/slice-house.js`.
+`npm run dist` builds the installer. Regenerating art needs
+`npm install sharp to-ico`, then `npm run assets` and `node tools/slice-house.js`.
 
-[`BUILD_LOG.md`](BUILD_LOG.md) documents the real bugs found along the way and
-why the fixes look the way they do — including the sprite-masking approach and
-a few Windows packaging traps.
+[`BUILD_LOG.md`](BUILD_LOG.md) covers the real bugs hit along the way — sprite
+masking, Windows packaging traps, and why the fixes look like they do.
 
 ---
 
 <div align="center">
 
-**[⬇ Download MiniMe](https://github.com/RudraMind/MiniMe/releases/latest)** · [Report a bug](https://github.com/RudraMind/MiniMe/issues) · [MIT licensed](LICENSE)
+**[⬇ Download MiniMe](https://github.com/RudraMind/MiniMe/releases/latest)** · [Report a bug](https://github.com/RudraMind/MiniMe/issues) · [MIT](LICENSE)
 
 </div>
