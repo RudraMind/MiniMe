@@ -1,64 +1,118 @@
-# MiniMe
+<div align="center">
 
-A pixel-art desktop companion for Windows. MiniMe roams your desktop, sits
-down and works alongside you during focus sessions, and nudges you to stretch
-and drink water. Right-click the house to send them to bed.
+<img src="docs/img/hero.png" alt="MiniMe — a tiny coworker who lives on your desktop" width="100%">
 
-> Windows only. See [Platform support](#platform-support).
+<p>
+  <a href="https://github.com/RudraMind/MiniMe/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/RudraMind/MiniMe?style=for-the-badge&color=f4d47a&labelColor=17222e"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-0078D6?style=for-the-badge&labelColor=17222e">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/RudraMind/MiniMe?style=for-the-badge&color=3f9153&labelColor=17222e"></a>
+</p>
+
+### **[⬇ Download for Windows](https://github.com/RudraMind/MiniMe/releases/latest)**
+
+*No admin rights. No account. No telemetry.*
+
+</div>
 
 ---
 
-## Features
+<table>
+<tr>
+<td width="42%" align="center">
+  <img src="docs/img/walk.gif" alt="MiniMe walking" width="220">
+</td>
+<td width="58%">
 
-- **Roams your whole desktop** — wanders anywhere on screen, above your
-  windows, without stealing clicks from anything underneath.
-- **Focus sessions (body doubling)** — start one and they sit down and work
-  beside you for 25 minutes with all reminders paused, then stand up and
-  stretch with you at the break, repeating until you stop. Drag them anywhere
-  while working to move their spot.
-- **Follow your cursor** — optional: they walk slowly toward your pointer and
-  sit down to relax when it stops moving.
-- **React to your apps** — optional: they strike a pose suited to whatever app
-  you switch to. Reads only the app's *name* — never window titles, page names,
-  or filenames — and nothing leaves your computer.
-- **Stretch reminders** — every 60 minutes (configurable) they walk to the
-  center and hold up a speech bubble. A nudge only; it never blocks you.
-- **Water reminders** — every 45 minutes (configurable) a full-screen pause
-  appears with a 10-second countdown. Esc or **Skip** dismisses it instantly,
-  and it closes itself if you Alt-Tab away. It never blocks Ctrl+Alt+Del,
-  Alt+Tab, or Task Manager.
-- **A house you can put anywhere** — drag it wherever you like; the spot is
-  remembered. Right-click it to send them to bed, which pauses reminders.
-- **Drag them around** — pick them up and drop them anywhere; they hold that
-  spot for a few seconds before carrying on.
-- **Give them a name** — used throughout the menus. Defaults to `Chotu`.
-- **Outfit colors** — pick a shirt and pants color (red, blue, yellow, black,
-  green, orange, or the original art) from Settings.
-- **Quiet hours** — optional auto-sleep overnight (off by default).
-- **Idle personality** — between walks they dance, check their phone, cross
-  their arms, give a thumbs up, and so on.
+### Working alone is the hard part
+
+MiniMe is a pixel-art companion who lives on your desktop. They wander around,
+get on with their own thing, and — when you start a focus session — **sit down
+and work right alongside you**.
+
+It's a trick called *body doubling*: having someone else visibly working nearby
+makes it easier to start a task and stay with it. MiniMe is that someone, minus
+the small talk.
+
+They'll also nudge you to stretch and drink water, because you won't.
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🍅 Focus sessions
+
+<img src="docs/img/focus.png" alt="Start a session, they work too, break together" width="100%">
+
+Start a session and they walk over, sit down, and work for 25 minutes.
+**All reminders go quiet** — an uninterrupted block is the whole point. When the
+timer's up they stand, stretch with you for 5 minutes, then get back to it.
+
+Drag them anywhere while they're working and they'll settle in at the new spot.
+Session and break lengths are yours to set.
+
+---
+
+## 💧 Nudges that respect you
+
+|  | |
+|---|---|
+| **Stretch** | Every hour they walk over and hold up a speech bubble. That's it — it never blocks you, never steals focus. |
+| **Water** | Every 45 minutes the screen dims with a 10-second countdown. **Esc skips it instantly**, and it closes itself the moment you Alt-Tab away. |
+
+It will never block `Ctrl+Alt+Del`, `Alt+Tab`, or Task Manager. If you're in the
+middle of something, you win — always.
+
+---
+
+## 🎭 They have a personality
+
+<img src="docs/img/poses.png" alt="idle, walk, work, stretch, water, wave, dance, phone, focused, thumbs up" width="100%">
+
+Between walks they dance, check their phone, cross their arms, sit down for a
+rest. Left-click for a wave. Pick them up and drop them anywhere on screen.
+
+**Optionally**, they'll follow your cursor around and sit down to relax when you
+stop moving — or react to whatever app you switch to, with a pose to match.
+
+---
+
+## 🎨 Make them yours
+
+<img src="docs/img/outfits.png" alt="Outfit colours: original, red, blue, green, orange, yellow" width="100%">
+
+Pick a shirt and trouser colour, and **give them a name** — it's used everywhere
+in the menus. They're called `Chotu` out of the box.
+
+---
+
+## 🏠 And a home to go back to
+
+<img src="docs/img/house.png" alt="House states: home, door open, asleep" width="100%">
+
+Right-click the house to send them to bed. They walk all the way home, head
+inside, and the lights go out — reminders pause until you wake them.
+**Drag the house wherever you like**; it stays there.
 
 ---
 
 ## Install
 
-### Option 1 — Download the installer (easiest)
+### Option 1 — the installer *(easiest)*
 
-1. Go to [Releases](https://github.com/RudraMind/MiniMe/releases).
-2. Download `MiniMe-Setup-<version>.exe`.
-3. Run it and follow the prompts.
+**[⬇ Download the latest release](https://github.com/RudraMind/MiniMe/releases/latest)**, run it, done.
+It installs per-user, so **no administrator rights are needed**.
 
-MiniMe installs per-user, so **no administrator rights are needed**.
+> [!NOTE]
+> Windows will show a **"Windows protected your PC"** screen, because the
+> installer isn't code-signed (a signing certificate costs money). Click
+> **More info → Run anyway**. If you'd rather not trust that, build it yourself
+> from source below — the result is identical.
 
-> **SmartScreen warning:** the installer is not code-signed, so Windows will
-> show a "Windows protected your PC" screen. Click **More info → Run anyway**.
-> This is expected for unsigned open-source apps. If you'd rather not, build it
-> yourself from source with the steps below — the result is identical.
+### Option 2 — run from source
 
-### Option 2 — Run from source
-
-Requires [Node.js](https://nodejs.org/) 18 or newer ([download the LTS
-version](https://nodejs.org/) and click through the installer).
+Needs [Node.js](https://nodejs.org/) 18+ *(grab the LTS build and click through)*.
 
 ```bash
 git clone https://github.com/RudraMind/MiniMe.git
@@ -67,132 +121,90 @@ npm install
 npm start
 ```
 
-That's it — all art ships in the repo already, so there's no asset build step
-and no image toolchain needed just to run it.
+All the artwork ships in the repo, so there's no build step and no image
+toolchain to install.
 
-**Not comfortable with a terminal?** After cloning (or after downloading the
-repo as a ZIP and extracting it), just **double-click `START-MINIME.bat`**. It
-installs everything the first time and starts MiniMe, and it tells you what to
-do if Node.js is missing. Every run after that, double-click the same file.
-
-> Running from source keeps a terminal window open — closing it closes MiniMe.
-> For everyday use, the installer in Option 1 is nicer: it runs on its own and
-> the **Start with Windows** setting will stick across reboots.
+> **Don't use a terminal?** Download the repo as a ZIP, extract it, and
+> **double-click `START-MINIME.bat`**. It sets everything up the first time and
+> starts MiniMe. If Node.js is missing it tells you exactly what to get.
 
 ---
 
 ## Using it
 
-MiniMe appears on your primary monitor and starts wandering.
-
 | Action | How |
 |---|---|
-| Open settings | Right-click them or the house → **Settings…**, or use the tray icon |
-| Wave | Left-click them |
-| Move them | Drag them anywhere |
-| Move the house | Drag the house anywhere |
 | Start / stop a focus session | Right-click them, or the tray icon |
-| Send to bed | Right-click the house → **Go to sleep** |
-| Wake up | Right-click the house → **Wake up** |
-| Trigger a reminder now | Tray icon → **Drink now** / **Stretch now** |
-| Restart the app | Tray icon or right-click → **Restart** |
-| Hide them | Tray icon → **Hide** |
+| Move them | Just drag them |
+| Move their house | Drag the house |
+| Wave | Left-click them |
+| Send to bed / wake up | Right-click the house |
+| Reminder right now | Tray icon → **Drink now** / **Stretch now** |
+| Settings | Right-click anything → **Settings…** |
 | Quit | Tray icon → **Quit** |
 
-Closing windows does **not** quit MiniMe — it lives in the system tray. Use
-**Quit** from the tray menu.
+Closing a window doesn't quit MiniMe — they live in the system tray.
 
-### Settings
-
-Everything is configurable from the Settings window and persists across
-restarts: their name, focus session and break lengths, reminder intervals,
-water overlay length, speech bubble duration, walk speed, shirt and pants
-color, cursor-following, app-based moods, quiet hours, and whether MiniMe
-starts with Windows.
-
-Settings are stored in `%APPDATA%\mini-me\config.json`.
+**Settings** covers their name, focus and break lengths, reminder intervals,
+walk speed, outfit colours, cursor-following, app moods, quiet hours, and
+start-with-Windows. Everything persists across restarts.
 
 ---
 
-## Building the installer yourself
+## 🔒 Privacy
+
+MiniMe has **no network code at all**. Nothing is uploaded, no analytics, no
+account, no telemetry. Settings live in a plain JSON file on your machine
+(`%APPDATA%\mini-me\config.json`).
+
+The optional *"react to my apps"* feature reads only the **name** of the
+foreground app — `chrome`, `code` — and never window titles, page names, URLs,
+or filenames. It's off by default, and the name it reads is used to pick a pose
+and then discarded.
+
+---
+
+## Good to know
+
+- **Windows only.** MiniMe leans on Windows behaviour for transparent,
+  always-on-top, click-through windows. No macOS or Linux build.
+- **Primary monitor only.** Multi-monitor setups won't break it, but they'll
+  stay on your main screen.
+- **The artwork has no up/down walking poses**, so vertical movement uses the
+  side-on walk. You'll notice it if you look for it.
+
+---
+
+## For developers
+
+```
+main.js       app lifecycle, windows, tray, timers, screen geometry
+state.js      the state machine — pure logic, zero Electron imports
+timers.js     pausable reminder schedulers
+preload.js    the contextBridge IPC surface
+renderer/     chotu, overlay and settings UIs — plain HTML/CSS/JS
+tools/        sprite + house slicers, icon and README art generators
+```
+
+`state.js` has no Electron dependency on purpose, so behaviour can be tested
+from plain Node without launching anything:
 
 ```bash
-npm install
-npm run dist      # creates dist/MiniMe-Setup-<version>.exe
-npm run pack      # unpacked build only, for quick testing
+node -e "const {PalState}=require('./state.js'); /* drive tick() and assert */"
 ```
 
-> **Windows gotcha:** `electron-builder` downloads a signing toolchain that
-> contains macOS symlinks, and Windows refuses to create symlinks without
-> elevated rights. If the build fails with
-> `Cannot create symbolic link ... libcrypto.dylib`, enable
-> **Settings → System → For developers → Developer Mode**, then rebuild. (This
-> is an `electron-builder` packaging quirk, not a MiniMe bug — it does not
-> affect running the app.)
+Build the installer with `npm run dist`. Regenerating artwork needs the optional
+deps: `npm install sharp to-ico`, then `npm run assets` and
+`node tools/slice-house.js`.
 
-Releases are also built automatically by GitHub Actions on any `v*` tag — see
-[`.github/workflows/release.yml`](.github/workflows/release.yml).
+[`BUILD_LOG.md`](BUILD_LOG.md) documents the real bugs found along the way and
+why the fixes look the way they do — including the sprite-masking approach and
+a few Windows packaging traps.
 
 ---
 
-## Regenerating art
+<div align="center">
 
-Sprite frames are committed to the repo, so you only need this if you replace
-the source sheet at `assets/reference/spritesheet.png`.
+**[⬇ Download MiniMe](https://github.com/RudraMind/MiniMe/releases/latest)** · [Report a bug](https://github.com/RudraMind/MiniMe/issues) · [MIT licensed](LICENSE)
 
-```bash
-npm install sharp to-ico   # optional deps, only needed for this step
-npm run assets             # re-slices sprites + regenerates icons
-node tools/slice-house.js  # re-slices the 3 house states
-```
-
-The slicer cuts 31 poses out of the sheet by connected-component detection. If
-it finds anything other than exactly 31 figures it stops and reports the count
-rather than guessing — see [`BUILD_LOG.md`](BUILD_LOG.md) for how the masking
-works and why.
-
----
-
-## Platform support
-
-**Windows only.** MiniMe relies on Windows behavior for transparent,
-always-on-top, click-through windows and for the full-screen water overlay.
-There is no macOS or Linux build, and mobile is out of scope by design (no
-desktop surface to walk on).
-
-The app runs on the primary display only; multi-monitor setups are not
-supported, but MiniMe will not crash on them.
-
----
-
-## Project layout
-
-```
-main.js            app lifecycle, windows, tray, timers, screen geometry
-state.js           pal state machine — pure logic, no Electron imports
-timers.js          pausable stretch/water schedulers
-preload.js         contextBridge IPC surface
-renderer/          chotu, overlay, and settings UIs (plain HTML/CSS/JS)
-tools/             sprite/house slicers + icon generator (optional, dev only)
-assets/pal/        the 31 generated sprite frames
-assets/house/      the 3 generated house states
-BUILD_LOG.md       build notes, corner cases, and troubleshooting history
-```
-
-`state.js` deliberately has no Electron dependency, so pal behavior can be
-tested from plain Node without launching the app:
-
-```bash
-node -e "const {PalState}=require('./state.js'); /* ... */"
-```
-
-## Contributing
-
-Issues and pull requests are welcome. If you're reporting a bug about MiniMe
-being in the wrong place, `main.js` (screen geometry) and `state.js` (position
-logic) are the files to name; for wrong sprites, jitter, or wrong facing, it's
-`renderer/chotu.js` and `renderer/chotu.css`.
-
-## License
-
-[MIT](LICENSE)
+</div>
