@@ -45,7 +45,6 @@ const TOL = 10;
 const DARK_MAX_BRI = 110;   // at or below this a pixel is linework: blocks the fill
 const GROUND_MIN_BRI = 120; // shadows/dust are brighter than linework
 const GROUND_MAX_SAT = 60;  // ...and far less colourful than skin or clothing
-const LINE_HALO = 2;        // shadow must be at least this far from any linework
 const GROUND_BAND = 0.3;    // shadow removal is confined to the bottom of the frame
 // Detached fragments smaller than this fraction of the main shape are dust.
 const SPECK_FRACTION = 0.02;
@@ -94,29 +93,15 @@ const SHEETS = {
 
 const whiteDist = (r, g, b) => Math.abs(r - 255) + Math.abs(g - 255) + Math.abs(b - 255);
 
-function computeNearDark(data, width, height, channels) {
+function computeDarkMask(data, width, height, channels) {
   const dark = new Uint8Array(width * height);
   for (let i = 0; i < width * height; i++) {
     const o = i * channels;
     if ((data[o] + data[o + 1] + data[o + 2]) / 3 <= DARK_MAX_BRI) dark[i] = 1;
   }
-  const near = new Uint8Array(width * height);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (!dark[y * width + x]) continue;
-      for (let dy = -LINE_HALO; dy <= LINE_HALO; dy++) {
-        const ny = y + dy;
-        if (ny < 0 || ny >= height) continue;
-        for (let dx = -LINE_HALO; dx <= LINE_HALO; dx++) {
-          const nx = x + dx;
-          if (nx < 0 || nx >= width) continue;
-          near[ny * width + nx] = 1;
-        }
-      }
-    }
-  }
-  return near;
+  return dark;
 }
+
 
 // Backdrop only: pixels within TOL of pure white, reachable from the border.
 // Deliberately strict — the character's own near-white art (a white cap panel,
@@ -149,48 +134,9 @@ function backgroundMask(data, width, height, channels) {
   return bg;
 }
 
-// The drop shadow survives the fill above (it is nowhere near white), so clear
-// it here, from INSIDE the figure. Constraints that make this safe:
-//   - only the bottom band, so a white cap at the top can never be touched
-//   - only pixels away from linework, so outlined art (socks, shoes) is safe
-//     while the shadow, which sits in open space, is not
-//   - grown from the bottom edge, so it cannot start inside an enclosed shape
-function stripGround(rgba, opaque, nearDark, w, h) {
-  const bandTop = Math.floor(h * (1 - GROUND_BAND));
-  const isGround = (idx) => {
-    if (!opaque[idx] || nearDark[idx]) return false;
-    const o = idx * 4;
-    const r = rgba[o], g = rgba[o + 1], b = rgba[o + 2];
-    const bri = (r + g + b) / 3;
-    const sat = Math.max(r, g, b) - Math.min(r, g, b);
-    return bri >= GROUND_MIN_BRI && sat <= GROUND_MAX_SAT;
-  };
-  const stack = [];
-  for (let y = Math.max(bandTop, h - 4); y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      if (isGround(i)) stack.push(i);
-    }
-  }
-  const seen = new Uint8Array(w * h);
-  while (stack.length) {
-    const cur = stack.pop();
-    if (seen[cur]) continue;
-    seen[cur] = 1;
-    opaque[cur] = 0;
-    const cx = cur % w, cy = (cur / w) | 0;
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        const nx = cx + dx, ny = cy + dy;
-        if (nx < 0 || ny < 0 || nx >= w || ny >= h || ny < bandTop) continue;
-        const n = ny * w + nx;
-        if (!seen[n] && isGround(n)) stack.push(n);
-      }
-    }
-  }
-}
-
+// Label every connected non-background region, so each figure can be masked by
+// its own component rather than by bounding box (a box would pull in a
+// neighbouring figure's shadow).
 function labelComponents(bg, width, height) {
   const labels = new Int32Array(width * height).fill(-1);
   const comps = [];
@@ -224,6 +170,43 @@ function labelComponents(bg, width, height) {
     }
   }
   return { labels, comps };
+}
+
+// The drop shadow survives the fill above (it is nowhere near white), so clear
+// it here, from INSIDE the figure.
+//
+// The discriminator is geometric, not colour-based: a drop shadow lies BELOW
+// all of the artwork's linework in its column, whereas the fill of a paw, a
+// sock or a shoe always sits above that shape's own bottom outline. Colour
+// cannot separate them — a cream paw and a grey shadow occupy the same
+// brightness and saturation range, which is what previously erased the dog's
+// front paws and left only their dark outlines behind.
+function stripGround(rgba, opaque, dark, w, h) {
+  // Lowest linework pixel per column; -1 where a column has none (dust puffs
+  // floating beside the figure, which should go).
+  const lowestDark = new Int32Array(w).fill(-1);
+  for (let x = 0; x < w; x++) {
+    for (let y = h - 1; y >= 0; y--) {
+      if (dark[y * w + x]) { lowestDark[x] = y; break; }
+    }
+  }
+
+  const bandTop = Math.floor(h * (1 - GROUND_BAND));
+  const isGround = (idx) => {
+    if (!opaque[idx]) return false;
+    const x = idx % w, y = (idx / w) | 0;
+    if (y < bandTop) return false;
+    if (y <= lowestDark[x]) return false; // still inside the artwork
+    const o = idx * 4;
+    const r = rgba[o], g = rgba[o + 1], b = rgba[o + 2];
+    const bri = (r + g + b) / 3;
+    const sat = Math.max(r, g, b) - Math.min(r, g, b);
+    return bri >= GROUND_MIN_BRI && sat <= GROUND_MAX_SAT;
+  };
+
+  for (let i = 0; i < w * h; i++) {
+    if (isGround(i)) opaque[i] = 0;
+  }
 }
 
 function dropSpecks(opaque, w, h) {
@@ -302,7 +285,7 @@ async function sliceOne(key, spec) {
   const { width, height, channels } = info;
 
   const bg = backgroundMask(data, width, height, channels);
-  const nearDark = computeNearDark(data, width, height, channels);
+  const darkMask = computeDarkMask(data, width, height, channels);
   const { labels, comps } = labelComponents(bg, width, height);
 
   const bySize = [...comps].sort((a, b) => b.area - a.area);
@@ -354,13 +337,13 @@ async function sliceOne(key, spec) {
       }
     }
 
-    const nearDarkCrop = new Uint8Array(cw * ch);
+    const darkCrop = new Uint8Array(cw * ch);
     for (let yy = 0; yy < ch; yy++) {
       for (let xx = 0; xx < cw; xx++) {
-        nearDarkCrop[yy * cw + xx] = nearDark[(c.minY + yy) * width + (c.minX + xx)];
+        darkCrop[yy * cw + xx] = darkMask[(c.minY + yy) * width + (c.minX + xx)];
       }
     }
-    stripGround(rgba, opaque, nearDarkCrop, cw, ch);
+    stripGround(rgba, opaque, darkCrop, cw, ch);
     dropSpecks(opaque, cw, ch);
     const closed = closeAlpha(opaque, cw, ch, 2);
     for (let p = 0; p < cw * ch; p++) rgba[p * 4 + 3] = closed[p] ? 255 : 0;
