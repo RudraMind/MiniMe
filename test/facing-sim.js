@@ -70,14 +70,24 @@ async function main() {
     // resolveAnimation() falls back to idle for anything a character lacks, so a
     // typo in a frame name degrades quietly instead of failing. Catch it here.
     for (const [animName, anim] of Object.entries(character.animations)) {
+      // An empty list renders nothing: chotu.js indexes frames[length-1] and the
+      // sprite keeps whatever image it had, so the pal silently freezes.
+      check(`${key}.${animName}: has at least one frame`, anim.frames.length > 0);
+
       const absent = anim.frames.filter((f) => !onDisk.includes(f));
       check(`${key}.${animName}: every frame exists on disk`, absent.length === 0, absent.join(', '));
 
-      // The invariant the renderer depends on: one animation, one facing.
-      const facings = new Set(anim.frames.map((f) => resolvedFacing(key, f)).filter((f) => f !== 'front'));
-      check(`${key}.${animName}: all frames share one facing`,
-        facings.size <= 1 && !facings.has(null),
-        [...facings].join('/') || 'all front');
+      // Every frame an animation plays must have a recorded facing, or the slicer
+      // cannot know whether to mirror it.
+      const unrecorded = anim.frames.filter((f) => resolvedFacing(key, f) === null);
+      check(`${key}.${animName}: every frame has a recorded facing`, unrecorded.length === 0, unrecorded.join(', '));
+
+      // NOTE: there is deliberately no "all frames share one facing" assertion
+      // here. resolvedFacing() returns the character's target or 'front' by
+      // construction, so such a check can never fail — it reads as coverage and
+      // is worth nothing. Mislabel a frame in the table and it still passes. The
+      // real check is `npm run verify:facing`, which compares pixels and never
+      // consults the table.
     }
   }
 
@@ -92,16 +102,36 @@ async function main() {
   // Spot-check the derived sets, so a rewrite of flipSet() cannot quietly widen
   // or empty them. These are the frames drawn against their character's grain.
   const expected = {
-    raj: ['point_01', 'sit_01'],
-    hanu: ['hanu_drink_01', 'hanu_jump_01', 'hanu_run_02', 'hanu_sit_01', 'hanu_walk_02'],
-    boy: ['boy_run_02', 'boy_sit_01', 'boy_stretch_01', 'boy_walk_03'],
-    girl: ['girl_run_02', 'girl_sit_01', 'girl_stretch_01', 'girl_walk_03'],
-    dog: ['dog_drink_01', 'dog_walk_01'],
+    // Raj's sheet faces right and right is his target, so only the chair pose,
+    // which is drawn against the rest of his sheet, needs mirroring.
+    raj: ['sit_01'],
+    hanu: ['hanu_drink_01', 'hanu_run_02', 'hanu_sit_01', 'hanu_walk_02'],
+    boy: ['boy_run_02', 'boy_sit_01', 'boy_stretch_01', 'boy_walk_02', 'boy_walk_03'],
+    girl: ['girl_run_02', 'girl_sit_01', 'girl_stretch_01', 'girl_walk_02', 'girl_walk_03'],
+    dog: ['dog_drink_01', 'dog_walk_01', 'dog_wave_02'],
   };
   for (const [key, frames] of Object.entries(expected)) {
     const got = [...flipSet(key)].sort();
     check(`${key}: derived mirror set`, got.join(',') === frames.join(','), got.join(', '));
   }
+
+  // A typo in a facing value used to be an instruction rather than an error:
+  // 'Left' is neither 'front' nor the target, so it put a correct frame into the
+  // mirror set. The table now refuses values it does not understand.
+  const { FACING: live, validate } = require('../tools/frame-facing.js');
+  const originalFacing = live.boy.frames.boy_walk_01;
+  live.boy.frames.boy_walk_01 = 'Left';
+  let threwOnFacing = false;
+  try { validate(); } catch { threwOnFacing = true; }
+  live.boy.frames.boy_walk_01 = originalFacing;
+  check('a misspelt facing value is rejected', threwOnFacing);
+
+  const originalTarget = live.boy.target;
+  live.boy.target = 'sideways';
+  let threwOnTarget = false;
+  try { validate(); } catch { threwOnTarget = true; }
+  live.boy.target = originalTarget;
+  check('a nonsense target is rejected', threwOnTarget);
 
   console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);
   process.exit(failures === 0 ? 0 : 1);

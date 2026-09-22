@@ -1,31 +1,35 @@
 'use strict';
-// Checks that every frame shipped in assets/ faces the way the slicers would cut
-// it today. Run with `npm run verify:facing`.
+// Checks, from pixels, that no animation plays two frames facing opposite ways.
+// Run with `npm run verify:facing`, or against another tree with
+// `node tools/verify-facing.js --assets /path/to/assets`.
 //
-// WHY A SEPARATE CHECK
-// test/facing-sim.js asserts that the tables agree with each other — that
-// nativeFacing matches the recorded facing, that every frame has an entry, and
-// that no animation mixes facings. It cannot look at a pixel, so it cannot catch
-// art that was mirrored by hand, mirrored twice, or never re-cut after the
-// facing table changed. That is exactly how the original bug survived: the flip
-// list was edited, the art was not, and the commit still read as a fix.
+// WHY THIS IS NOT test/facing-sim.js
+// That harness compares the tables to each other. It cannot see art: every
+// assertion in it is derived from tools/frame-facing.js, so a facing recorded
+// backwards there is invisible to it AND to any check built on it. That is not a
+// hypothetical — the first two attempts at fixing the snap both passed a full
+// green suite while the app still snapped, because the table itself was wrong.
 //
-// HOW IT COMPARES
-// Not byte for byte. The shipped character frames carry a hole-repair pass that
-// slice-character.js does not run (tools/fix-alpha-speckles.js is separate), and
-// frames mirrored in place were re-centred on the canvas. So this measures
-// ORIENTATION: for each frame it takes the alpha silhouette, and scores the
-// shipped frame against the fresh slice and against the mirror of the fresh
-// slice. Whichever is closer says which way round the shipped frame is. A frame
-// that scores closer to the mirror is reported as wrong.
+// SO THIS CHECK NEVER READS THE TABLE
+// It takes the animation frame lists from renderer/animations.js, which is what
+// the renderer actually plays, and compares the frames of each animation against
+// each other in pixels. If frame B matches frame A better mirrored than as-is,
+// the two are drawn facing opposite ways, and the sprite will snap round
+// mid-cycle no matter what any table says.
 //
-// COST
-// It re-cuts every sheet into a temporary directory, so it needs sharp and takes
-// a few seconds. That is why it is not part of `npm test`.
+// THE COMPARISON
+// The head band, in colour. Facing lives in the head: hair mass and ear on the
+// trailing side, face and nose on the leading side. Legs and arms differ wildly
+// between poses in the same cycle, which is noise for this question, so the lower
+// two thirds of the frame is left out.
+//
+// THE THRESHOLD
+// Measured on this art. With the nine known-bad pairs present, every one scored
+// mirror/same <= 0.69; with them fixed, the most mirror-like remaining pair (two
+// of Raj's frontal stretch poses) scores 0.79. 0.75 sits in that gap. Front-facing
+// poses land near or above 1.0 and are not at risk of being flagged.
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
 
 let sharp;
 try {
@@ -37,77 +41,82 @@ try {
 }
 
 const ROOT = path.join(__dirname, '..');
-const DIRS = ['pal', 'hanu', 'boy', 'girl', 'dog'];
+const BAND_H = 34;          // head band, of a 72px frame
+const MIRROR_RATIO = 0.75;  // below this, the pair is a mirror of each other
 
-// Silhouette of a frame: 1 where the sprite is opaque, 0 where the desktop shows
-// through. Colour is ignored on purpose — the repair pass and the PNG re-encode
-// both nudge colour, while a mirror is a wholesale change of shape.
-async function silhouette(file, flop) {
-  let img = sharp(file);
-  if (flop) img = img.flop();
-  const { data, info } = await img.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const out = new Uint8Array(info.width * info.height);
-  for (let i = 0; i < out.length; i++) out[i] = data[i * 4 + 3] > 127 ? 1 : 0;
-  return out;
+function assetsRoot() {
+  const i = process.argv.indexOf('--assets');
+  return i === -1 ? path.join(ROOT, 'assets') : path.resolve(process.argv[i + 1]);
 }
 
-function distance(a, b) {
-  let d = 0;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
-  return d;
+// renderer/animations.js is an ES module and package.json has no "type": "module",
+// so require() would throw on `export`. It imports nothing itself, so handing the
+// source to Node as a data URL runs it with real module semantics — no build step,
+// and no second copy of the animation tables to drift.
+async function loadAnimations() {
+  const src = fs.readFileSync(path.join(ROOT, 'renderer', 'animations.js'), 'utf8');
+  return import('data:text/javascript;base64,' + Buffer.from(src, 'utf8').toString('base64'));
+}
+
+async function headBand(file, flop) {
+  let img = sharp(file).extract({ left: 0, top: 0, width: 72, height: BAND_H });
+  if (flop) img = img.flop();
+  const { data } = await img.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return data;
+}
+
+// Mean absolute RGB difference, with a transparent-vs-opaque mismatch counted as
+// a full miss so silhouette still contributes. Scaled down to keep it readable.
+function difference(a, b) {
+  let total = 0;
+  for (let i = 0; i < a.length; i += 4) {
+    const aOpaque = a[i + 3] > 127;
+    const bOpaque = b[i + 3] > 127;
+    if (!aOpaque && !bOpaque) continue;
+    if (aOpaque !== bOpaque) { total += 255 * 3; continue; }
+    total += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+  }
+  return Math.round(total / 1000);
 }
 
 async function main() {
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'minime-facing-'));
-  try {
-    // The slicers resolve their paths from their own location, so give them a
-    // throwaway tree with only the source sheets in it. assets/ is never touched.
-    fs.mkdirSync(path.join(work, 'assets', 'reference'), { recursive: true });
-    fs.cpSync(path.join(ROOT, 'tools'), path.join(work, 'tools'), { recursive: true });
-    fs.cpSync(path.join(ROOT, 'assets', 'reference'), path.join(work, 'assets', 'reference'), { recursive: true });
+  const assets = assetsRoot();
+  const { CHARACTERS } = await loadAnimations();
+  const failures = [];
+  let pairs = 0;
 
-    const env = { ...process.env, NODE_PATH: path.join(ROOT, 'node_modules') };
-    for (const slicer of ['slice-character.js', 'slice-sheet.js']) {
-      execFileSync(process.execPath, [path.join(work, 'tools', slicer)], { cwd: work, env, stdio: 'ignore' });
-    }
-
-    let checked = 0;
-    const wrong = [];
-    for (const dir of DIRS) {
-      const freshDir = path.join(work, 'assets', dir);
-      if (!fs.existsSync(freshDir)) {
-        wrong.push(`${dir}/: the slicer produced nothing`);
+  for (const [key, character] of Object.entries(CHARACTERS)) {
+    const dir = character.dir.replace(/^\.\.\/assets\//, '').replace(/\/$/, '');
+    for (const [animName, anim] of Object.entries(character.animations)) {
+      if (!anim.frames || anim.frames.length === 0) {
+        failures.push(`${key}.${animName}: animation has no frames`);
         continue;
       }
-      for (const file of fs.readdirSync(freshDir).filter((f) => f.endsWith('.png'))) {
-        const shipped = path.join(ROOT, 'assets', dir, file);
-        if (!fs.existsSync(shipped)) {
-          wrong.push(`${dir}/${file}: cut from the sheet but not shipped`);
-          continue;
-        }
-        const fresh = path.join(freshDir, file);
-        const a = await silhouette(shipped, false);
-        const same = await silhouette(fresh, false);
-        const mirrored = await silhouette(fresh, true);
-        if (a.length !== same.length) {
-          wrong.push(`${dir}/${file}: canvas size differs from the slicer's`);
-          continue;
-        }
-        checked++;
-        const dSame = distance(a, same);
-        const dMirror = distance(a, mirrored);
-        if (dSame >= dMirror) {
-          wrong.push(`${dir}/${file}: shipped art is mirrored relative to the slicer (same=${dSame} mirrored=${dMirror})`);
+      const frames = [...new Set(anim.frames)];
+      const missing = frames.filter((f) => !fs.existsSync(path.join(assets, dir, `${f}.png`)));
+      if (missing.length) {
+        failures.push(`${key}.${animName}: missing art for ${missing.join(', ')}`);
+        continue;
+      }
+      for (let i = 0; i < frames.length; i++) {
+        for (let j = i + 1; j < frames.length; j++) {
+          const a = await headBand(path.join(assets, dir, `${frames[i]}.png`), false);
+          const same = difference(a, await headBand(path.join(assets, dir, `${frames[j]}.png`), false));
+          const mirrored = difference(a, await headBand(path.join(assets, dir, `${frames[j]}.png`), true));
+          pairs++;
+          const ratio = mirrored / (same || 1);
+          if (ratio < MIRROR_RATIO) {
+            failures.push(`${key}.${animName}: ${frames[i]} and ${frames[j]} face opposite ways `
+              + `(mirrored match ${mirrored} beats as-is ${same}, ratio ${ratio.toFixed(2)})`);
+          }
         }
       }
     }
-
-    for (const line of wrong) console.log(`FAIL  ${line}`);
-    console.log(`\n${checked} frames compared, ${wrong.length} wrong.`);
-    process.exit(wrong.length === 0 ? 0 : 1);
-  } finally {
-    fs.rmSync(work, { recursive: true, force: true });
   }
+
+  for (const line of failures) console.log(`FAIL  ${line}`);
+  console.log(`\n${pairs} frame pairs compared in ${assets}, ${failures.length} facing the wrong way.`);
+  process.exit(failures.length === 0 ? 0 : 1);
 }
 
 if (require.main === module) {

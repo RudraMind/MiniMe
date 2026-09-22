@@ -877,6 +877,49 @@ function pollCursor(follow) {
 // perfectly still and hope. Silent unless asked for.
 const DEBUG_LADDER = process.env.MINIME_DEBUG_LADDER === '1';
 
+// MINIME_DEBUG_FACING=1 prints which way the pal is travelling, which way the
+// art faces, and therefore whether the renderer will mirror it. Facing bugs are
+// invisible from a still frame — you have to see the direction of travel and the
+// sprite's own direction side by side over several ticks. Silent unless asked for.
+const DEBUG_FACING = process.env.MINIME_DEBUG_FACING === '1';
+let lastFacingTrace = 0;
+let lastTraceX = null;
+let facingShots = 0;
+
+// Deliberately does NOT read the facing tables. They live in tools/ and
+// renderer/, and tools/ is excluded from the packaged build, so reaching for them
+// here would log something different in the bundle than it does from source.
+// Everything below is what the main process actually owns: where the pal moved and
+// which way it told the renderer it is facing. Whether the pixels agree is a
+// question for the screenshots, not for a table.
+function traceFacing(s) {
+  const now = Date.now();
+  if (now - lastFacingTrace < 250) return;
+  lastFacingTrace = now;
+  const travel = lastTraceX === null ? 0 : s.x - lastTraceX;
+  lastTraceX = s.x;
+  const travelWord = Math.abs(travel) < 0.5 ? 'still' : (travel > 0 ? 'RIGHT' : 'LEFT');
+  console.log(`[facing] ${characterKey()} state=${s.state} anim=${s.animation} `
+    + `x=${Math.round(s.x)} moved=${travel.toFixed(1)}(${travelWord}) `
+    + `facing=${s.facing > 0 ? 'right' : 'left'}`);
+
+  // Photograph the sprite as the screen actually shows it. A facing bug cannot be
+  // diagnosed from state alone: the numbers can be right while the pixels are
+  // wrong, and the reverse. Cropped to the pal so the shot is small.
+  if (facingShots < 24 && chotuWindow && !chotuWindow.isDestroyed()) {
+    const n = String(facingShots++).padStart(2, '0');
+    const rect = {
+      x: Math.max(0, Math.round(s.x) - 8),
+      y: Math.max(0, Math.round(s.y) - 8),
+      width: PAL_W + 16,
+      height: PAL_H + 16,
+    };
+    chotuWindow.webContents.capturePage(rect)
+      .then((img) => fs.writeFileSync(`/tmp/minime-shot-${n}-${travelWord}.png`, img.toPNG()))
+      .catch(() => {});
+  }
+}
+
 function traceState(from, to) {
   const d = dock.get();
   const idle = Math.round(powerMonitor.getSystemIdleTime());
@@ -910,6 +953,7 @@ function startTickLoop() {
       s.playAnchor = { x: s.playAnchor.x - workArea.x, y: s.playAnchor.y - workArea.y };
     }
     sendTo(chotuWindow, 'pal:state', s);
+    if (DEBUG_FACING) traceFacing(s);
 
     // electron-store writes to disk synchronously on every set — only persist
     // when the state actually changes, not 60x a second.

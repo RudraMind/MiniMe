@@ -35,11 +35,15 @@
 // asserts that, because the two drifting apart is what made Raj moonwalk.
 const FACING = {
   raj: {
-    target: 'left',
+    target: 'right',
     frames: {
       // The five walk poses are the only frames that carry travel, and the
-      // artist drew all five facing left.
-      walk_01: 'left', walk_02: 'left', walk_03: 'left', walk_04: 'left', walk_05: 'left',
+      // artist drew all five facing RIGHT: the sunglasses and nose lead on the
+      // right, the hair mass sits at the back on the left, and the shoes point
+      // right. Checked one frame at a time at 12x — at small sizes his black
+      // hair and black sunglasses merge and the head reads either way, which is
+      // exactly how this entry was first recorded backwards.
+      walk_01: 'right', walk_02: 'right', walk_03: 'right', walk_04: 'right', walk_05: 'right',
       wave_01: 'front', wave_02: 'front', wave_03: 'front',
       glasses_01: 'front', glasses_02: 'front', glasses_03: 'front',
       stand_01: 'front',
@@ -50,13 +54,17 @@ const FACING = {
       splash_01: 'front', splash_02: 'front', splash_03: 'front',
       stretch_01: 'front', stretch_02: 'front', stretch_03: 'front',
       thumbsup_01: 'front',
-      // Arm extended along the line of sight — unmistakably a profile.
+      // Arm extended along the line of sight — unmistakably a profile, and it
+      // points the same way he walks, so it needs no mirroring.
       point_01: 'right',
       crossed_01: 'front',
       phone_01: 'front',
       jump_01: 'front',
-      // Sitting across the chair, in profile.
-      sit_01: 'right',
+      // Sitting across the chair in profile, and the only pose on his sheet drawn
+      // against the rest: the chair back is behind him on the right and his
+      // crossed legs reach left. Shipped unmirrored for as long as the app has
+      // existed, which is why he always sat facing the wrong way.
+      sit_01: 'left',
     },
   },
 
@@ -65,7 +73,10 @@ const FACING = {
     frames: {
       hanu_walk_01: 'left',
       hanu_walk_02: 'right',
-      hanu_jump_01: 'right',
+      // A frontal leap: both eyes are drawn the same, the mace is overhead and
+      // the pose squares to the viewer. Mirroring it only moves his tail to the
+      // wrong side, so it is left alone.
+      hanu_jump_01: 'front',
       // Asleep in bed: no facing.
       hanu_sleep_01: 'front',
       hanu_drink_01: 'right',
@@ -80,9 +91,13 @@ const FACING = {
   boy: {
     target: 'left',
     frames: {
+      // Only the first of the three walk poses is drawn facing left; the other
+      // two face right and are mirrored on the way out. boy_walk_02 is the frame
+      // that kept the snap alive after the first attempt at this fix: at
+      // contact-sheet size its cap brim reads as pointing left when it does not.
+      // Every entry here was checked one frame at a time at 12x.
       boy_walk_01: 'left',
-      boy_walk_02: 'left',
-      // The odd one out of the three-frame walk: drawn facing the other way.
+      boy_walk_02: 'right',
       boy_walk_03: 'right',
       boy_run_01: 'left',
       boy_run_02: 'right',
@@ -99,8 +114,10 @@ const FACING = {
   girl: {
     target: 'left',
     frames: {
+      // Same split as the boy's — the sheets share a layout, and they share this.
+      // Her hair bow sits on the trailing side, which is the cue to read.
       girl_walk_01: 'left',
-      girl_walk_02: 'left',
+      girl_walk_02: 'right',
       girl_walk_03: 'right',
       girl_run_01: 'left',
       girl_run_02: 'right',
@@ -128,8 +145,11 @@ const FACING = {
       dog_walk_02: 'right',
       dog_drink_01: 'left',
       dog_wave_01: 'right',
+      // The two wave poses are exact mirrors of each other: wave_01 raises the
+      // right paw with its tail on the left, wave_02 the reverse. Calling this
+      // one 'front' is what let the dog spin on the spot every time it waved.
+      dog_wave_02: 'left',
       // Sitting or lying square to the viewer, tail to one side: no facing.
-      dog_wave_02: 'front',
       dog_sit_01: 'front',
       dog_sit_02: 'front',
       dog_sleep_01: 'front',
@@ -138,6 +158,26 @@ const FACING = {
   },
 };
 
+const FACINGS = ['left', 'right', 'front'];
+const TARGETS = ['left', 'right'];
+
+// Refuse a value this file does not understand. Without this a typo was not an
+// error but a silent instruction: 'Left' is neither 'front' nor the target, so it
+// used to put that frame in the mirror set and flip art that was already correct.
+function validate() {
+  for (const [key, spec] of Object.entries(FACING)) {
+    if (!TARGETS.includes(spec.target)) {
+      throw new Error(`${key}: target must be one of ${TARGETS.join('/')}, got ${JSON.stringify(spec.target)}`);
+    }
+    for (const [frame, facing] of Object.entries(spec.frames)) {
+      if (!FACINGS.includes(facing)) {
+        throw new Error(`${key}.${frame}: facing must be one of ${FACINGS.join('/')}, got ${JSON.stringify(facing)}`);
+      }
+    }
+  }
+}
+validate();
+
 // The frames a slicer must mirror for this character: every pose that has a
 // facing and is drawn the wrong way round. 'front' poses are never mirrored.
 function flipSet(key) {
@@ -145,6 +185,7 @@ function flipSet(key) {
   if (!spec) throw new Error(`No facing recorded for character "${key}"`);
   const out = new Set();
   for (const [frame, facing] of Object.entries(spec.frames)) {
+    if (!FACINGS.includes(facing)) throw new Error(`${key}.${frame}: unknown facing ${JSON.stringify(facing)}`);
     if (facing !== 'front' && facing !== spec.target) out.add(frame);
   }
   return out;
@@ -160,4 +201,4 @@ function resolvedFacing(key, frame) {
   return spec.target;
 }
 
-module.exports = { FACING, flipSet, resolvedFacing };
+module.exports = { FACING, FACINGS, TARGETS, flipSet, resolvedFacing, validate };
