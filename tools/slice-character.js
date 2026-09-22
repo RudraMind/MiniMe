@@ -15,6 +15,10 @@
 //      fails loudly instead of silently shipping a shadow as a pose.
 const fs = require('fs');
 const path = require('path');
+// Which poses are drawn against their character's grain, and so have to be
+// mirrored on the way out. Recorded per frame rather than listed here, because
+// the hand-written list this replaces was wrong in both directions at once.
+const { flipSet } = require('./frame-facing.js');
 
 let sharp;
 try {
@@ -65,10 +69,6 @@ const SHEETS = {
   boy: {
     sheet: 'boysheet.png',
     rows: 3,
-    // The run poses are drawn facing right while every walk pose faces left.
-    // Mirror them so the whole character has ONE native facing; the renderer
-    // then flips the sprite purely from travel direction.
-    flip: ['boy_run_01', 'boy_run_02'],
     names: [
       'boy_walk_01', 'boy_walk_02', 'boy_jump_01', 'boy_bed_01',
       'boy_drink_01', 'boy_run_01', 'boy_run_02', 'boy_sit_01',
@@ -78,7 +78,6 @@ const SHEETS = {
   girl: {
     sheet: 'girlsheet.png',
     rows: 3,
-    flip: ['girl_run_01', 'girl_run_02'],
     names: [
       'girl_walk_01', 'girl_walk_02', 'girl_jump_01', 'girl_bed_01',
       'girl_drink_01', 'girl_run_01', 'girl_run_02', 'girl_sit_01',
@@ -285,6 +284,7 @@ async function sliceOne(key, spec) {
   const sheetPath = path.join(ROOT, 'assets', 'reference', spec.sheet);
   const outDir = path.join(ROOT, 'assets', key);
   const expected = spec.names.length;
+  const flips = flipSet(key);
 
   const { data, info } = await sharp(sheetPath).raw().toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
@@ -388,7 +388,7 @@ async function sliceOne(key, spec) {
     // by sharp, so the mirror has to happen here, on the image itself.
     let resizePipe = sharp(tight, { raw: { width: tw, height: th, channels: 4 } })
       .resize(outW, outH, { kernel: 'nearest', fit: 'fill' });
-    if (spec.flip && spec.flip.includes(name)) resizePipe = resizePipe.flop();
+    if (flips.has(name)) resizePipe = resizePipe.flop();
     const resized = await resizePipe.raw().toBuffer();
 
     const composed = sharp({
@@ -422,4 +422,11 @@ async function main() {
   }
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+// Only re-cut art when run as a command. Without this guard, anything that
+// require()s this file for its tables overwrites every frame in assets/ as a
+// side effect of the import.
+if (require.main === module) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}
+
+module.exports = { SHEETS };

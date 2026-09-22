@@ -1,6 +1,10 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+// Raj's walk poses all face left, but two of his flourishes (pointing, sitting)
+// are drawn in right-facing profile. The renderer can only mirror from travel
+// direction, so those two are mirrored here instead.
+const { flipSet } = require('./frame-facing.js');
 
 let sharp;
 try {
@@ -314,6 +318,8 @@ async function main() {
   });
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
+  // assets/pal/ is Raj, whose key in the facing table is 'raj'.
+  const flips = flipSet('raj');
   const manifest = [];
   let patched = 0;
 
@@ -354,6 +360,19 @@ async function main() {
 
     patched += fillEnclosedHoles(resizedRaw, outW, outH);
 
+    // Mirror the against-the-grain poses here, on the frame itself. It has to
+    // happen before the composite below: sharp silently ignores .flop() applied
+    // after .composite() onto a created canvas, which makes a mirror that looks
+    // like it worked and does nothing. Running after fillEnclosedHoles is safe —
+    // mirroring moves alpha, it does not open new holes.
+    let frameRaw = resizedRaw;
+    if (flips.has(name)) {
+      frameRaw = await sharp(resizedRaw, { raw: { width: outW, height: outH, channels: 4 } })
+        .flop()
+        .raw()
+        .toBuffer();
+    }
+
     const left = Math.round((CANVAS - outW) / 2);
     const top = CANVAS - outH; // bottom-aligned
 
@@ -361,7 +380,7 @@ async function main() {
     await sharp({
       create: { width: CANVAS, height: CANVAS, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
     })
-      .composite([{ input: resizedRaw, raw: { width: outW, height: outH, channels: 4 }, left, top }])
+      .composite([{ input: frameRaw, raw: { width: outW, height: outH, channels: 4 }, left, top }])
       .png()
       .toFile(outPath);
 
@@ -378,7 +397,13 @@ async function main() {
   console.log(`Patched ${patched} enclosed transparent pixel(s) after downscaling.`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only re-cut art when run as a command — see the same guard in
+// slice-character.js. A bare require() of this file used to rewrite assets/pal/.
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+module.exports = { NAMES };

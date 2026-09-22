@@ -12,9 +12,12 @@ export const CHARACTERS = {
     dir: '../assets/pal/',
     // Which way the source art faces. The renderer mirrors from travel
     // direction, so getting this wrong makes the character moonwalk.
-    // Raj's sheet faces right (sunglasses and nose on the right, hair at the
-    // back on the left) — unlike Hanu, Bud and Pip, which all face left.
-    nativeFacing: 'right',
+    // All five of Raj's walk poses face LEFT: the nose leads on the left and
+    // the hair mass sits at the back on the right. His standing and flourish
+    // poses square up to the viewer, which is what makes 'right' a tempting
+    // misreading — but those poses carry no travel. Every facing is recorded
+    // per frame in tools/frame-facing.js and checked by test/facing-sim.js.
+    nativeFacing: 'left',
     // Raj's art is a plain shirt + trousers, so the outfit recolour applies.
     recolorable: true,
     // Idle flourishes this character can actually perform.
