@@ -7,6 +7,7 @@
     "start": "electron .",
     "test": "node test/ladder-sim.js && node test/play-sim.js && node test/facing-sim.js",
     "verify:facing": "node tools/verify-facing.js",
+    "defringe": "node tools/defringe-frames.js",
     "slice": "node tools/slice-sheet.js",
     "placeholders": "node tools/make-placeholders.js",
     "assets": "npm run slice && npm run placeholders",

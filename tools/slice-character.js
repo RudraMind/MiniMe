@@ -19,6 +19,11 @@ const path = require('path');
 // mirrored on the way out. Recorded per frame rather than listed here, because
 // the hand-written list this replaces was wrong in both directions at once.
 const { flipSet } = require('./frame-facing.js');
+// These sheets have a WHITE backdrop, keyed deliberately tightly (see TOL) so that
+// near-white ART survives. The cost is that the outermost ring of each figure is
+// still part backdrop, which reads as a white outline drawn around the character on
+// a transparent window. This softens that ring back to the art colour underneath.
+const { defringe } = require('./defringe.js');
 
 let sharp;
 try {
@@ -390,6 +395,11 @@ async function sliceOne(key, spec) {
       .resize(outW, outH, { kernel: 'nearest', fit: 'fill' });
     if (flips.has(name)) resizePipe = resizePipe.flop();
     const resized = await resizePipe.raw().toBuffer();
+
+    // After the downscale, not before: nearest-neighbour resampling of a hard mask
+    // recreates a hard edge, so softening earlier would be undone here. Mirroring
+    // first makes no difference to it either way.
+    defringe(resized, outW, outH);
 
     const composed = sharp({
       create: { width: CANVAS, height: CANVAS, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
