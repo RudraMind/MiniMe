@@ -1,10 +1,11 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { app, BrowserWindow, Tray, Menu, screen, ipcMain, globalShortcut, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, ipcMain, globalShortcut, nativeImage, dialog, powerMonitor } = require('electron');
 const Store = require('electron-store');
-const { PalState, HOUSE } = require('./state');
+const { PalState, HOUSE, BOREDOM_RUNGS } = require('./state');
 const { ReminderTimers } = require('./timers');
+const dock = require('./dock');
 
 // Must match the size the slicer writes (tools/slice-house.js OUT_W) and the
 // values in renderer/chotu.js. The art is square.
@@ -13,6 +14,11 @@ const HOUSE_H = 120;
 const PAL_W = 72;
 const PAL_H = 72;
 const TICK_MS = 16;
+
+// Platform branches are kept inline rather than in a separate module: there are
+// only a handful, and each one reads better next to the Windows behaviour it
+// diverges from.
+const IS_MAC = process.platform === 'darwin';
 
 const store = new Store({
   defaults: {
@@ -32,6 +38,11 @@ const store = new Store({
     housePos: null,
     followCursor: false,
     focusMoods: false,
+    // Escalating boredom: fidget, sulk, patrol the Dock, doze off.
+    boredomLadder: true,
+    // The Dock patrol on its own, since it's the rung that walks him a long way
+    // and the only one that is macOS-only.
+    dockTrip: true,
     character: 'raj', // 'raj' | 'hanu'
     palName: 'Chotu',
     focusSessionMin: 25,
@@ -57,6 +68,7 @@ let pal = null;
 let timers = null;
 let tickHandle = null;
 let workArea = null;
+let displayBounds = null;
 
 function getConfig() {
   return store.store;
@@ -142,7 +154,12 @@ function pushHistory(entry) {
 }
 
 function computeWorkArea() {
-  return screen.getPrimaryDisplay().workArea;
+  const d = screen.getPrimaryDisplay();
+  // Cached alongside the work area because the Dock check below needs the full
+  // display, including the strip the work area excludes — and it runs every
+  // tick, so it must not call into the screen API itself.
+  displayBounds = d.bounds;
+  return d.workArea;
 }
 
 // The pal roams the whole work area. x/y are the sprite's top-left corner, so
@@ -230,6 +247,17 @@ function createChotuWindow() {
   });
   chotuWindow.setAlwaysOnTop(true, 'screen-saver');
   chotuWindow.setIgnoreMouseEvents(true, { forward: true });
+  // macOS has Spaces; without this the pal only exists on the desktop it was
+  // created on and vanishes the moment you switch or enter a fullscreen app.
+  // skipTransformProcessType is required, not cosmetic: the default path flips
+  // the process between accessory and foreground and hides the window each time
+  // it is called, which flickers the pal on a dock-hidden app like this one.
+  if (IS_MAC) {
+    chotuWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
+  }
   chotuWindow.loadFile(path.join(__dirname, 'renderer', 'chotu.html'));
   // This window is only ever closed when the app is shutting down (Hide uses
   // hide(), not close()). Stop the tick immediately so it can't keep pushing
@@ -244,10 +272,16 @@ function createChotuWindow() {
   chotuWindow.on('closed', () => { chotuWindow = null; });
 }
 
-function openOverlay(kind) {
-  if (overlayWindow) return;
-  overlayWindow = new BrowserWindow({
-    fullscreen: true,
+// The water overlay is a full-screen dimmer that lives for ~10 seconds.
+//
+// On Windows `fullscreen: true` is exactly right. On macOS it is the wrong
+// primitive: it requests *native* fullscreen, which animates the window into a
+// Space of its own over roughly a second and interferes with transparency — a
+// heavyweight desk-clearing transition for a brief dimmer. Sizing the window to
+// the display instead gives the same effect instantly, and the 'screen-saver'
+// window level already draws above the menu bar and Dock.
+function overlayWindowOptions() {
+  const base = {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -258,8 +292,23 @@ function openOverlay(kind) {
       contextIsolation: true,
       nodeIntegration: false,
     },
-  });
+  };
+  if (!IS_MAC) return { ...base, fullscreen: true };
+  // Primary display, matching the pal's own roam area (see computeWorkArea);
+  // deliberately display.bounds and not workArea, so the menu bar dims too.
+  return { ...base, ...screen.getPrimaryDisplay().bounds, movable: false, hasShadow: false };
+}
+
+function openOverlay(kind) {
+  if (overlayWindow) return;
+  overlayWindow = new BrowserWindow(overlayWindowOptions());
   overlayWindow.setAlwaysOnTop(true, 'screen-saver');
+  if (IS_MAC) {
+    overlayWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
+  }
   overlayWindow.loadFile(path.join(__dirname, 'renderer', 'overlay.html'));
 
   // The Chotu window is now full-screen and also at 'screen-saver' level, so
@@ -288,6 +337,13 @@ function openOverlay(kind) {
   };
 
   overlayWindow.webContents.once('did-finish-load', () => {
+    // The overlay can be dismissed before it finishes loading, in which case
+    // this fires with the window already gone.
+    if (!overlayWindow || overlayWindow.isDestroyed()) return;
+    // Hiding the Dock icon makes this an accessory app, and accessory apps
+    // cannot bring themselves forward with focus() alone. Without this the
+    // overlay draws on top but never receives the Escape keypress.
+    if (IS_MAC) app.focus({ steal: true });
     overlayWindow.focus();
     sendTo(overlayWindow, 'overlay:open', { seconds: remaining });
     readyForBlurClose = true;
@@ -303,7 +359,11 @@ function openOverlay(kind) {
   ipcMain.on('overlay:dismiss', dismissListener);
 
   const escHandler = () => finish('esc');
-  globalShortcut.register('Escape', escHandler);
+  // Windows needs a global grab because the overlay can sit unfocused behind a
+  // foreground app. On macOS the overlay is explicitly focused above, so its own
+  // renderer keydown handles Escape — and a *system-wide* Escape grab there
+  // would swallow the key for every other app while the overlay is up.
+  if (!IS_MAC) globalShortcut.register('Escape', escHandler);
 
   overlayWindow.on('blur', () => {
     if (readyForBlurClose) finish('esc');
@@ -311,13 +371,17 @@ function openOverlay(kind) {
   overlayWindow.on('closed', () => {
     clearInterval(countdownHandle);
     ipcMain.removeListener('overlay:dismiss', dismissListener);
-    globalShortcut.unregister('Escape');
+    if (!IS_MAC) globalShortcut.unregister('Escape');
     overlayWindow = null;
     restoreChotuWindow();
   });
 }
 
 function createSettingsWindow() {
+  // Accessory apps (Dock icon hidden) can't raise their own windows without
+  // stealing activation first, so Settings would otherwise open behind
+  // whatever you were working in.
+  if (IS_MAC) app.focus({ steal: true });
   if (settingsWindow) {
     settingsWindow.focus();
     return;
@@ -478,6 +542,40 @@ function buildHouseMenu() {
   return Menu.buildFromTemplate(template);
 }
 
+// The boredom rungs, as things you can ask for.
+//
+// Left to itself the ladder takes fifteen minutes to play out and only does so
+// when nobody is interacting with the app — which makes it impossible to show
+// anyone on purpose, or to check after changing it. Each item does exactly what
+// the rung does when it arrives on its own; the wait is the only thing skipped.
+//
+// Labels carry the real wait so the menu doubles as documentation of the ladder.
+const PLAY_LABELS = {
+  fidget: 'Fidget',
+  sulk: 'Give up on me',
+  dock: 'Go look at the Dock',
+  doze: 'Doze off',
+};
+
+function formatWait(ms) {
+  const secs = Math.round(ms / 1000);
+  return secs < 60 ? `${secs} sec` : `${Math.round(secs / 60)} min`;
+}
+
+function playMenuItem() {
+  return {
+    label: 'Play',
+    submenu: BOREDOM_RUNGS.map((rung) => ({
+      label: `${PLAY_LABELS[rung.key] || rung.key} (${formatWait(rung.afterMs)})`,
+      // Greyed out rather than missing: the Dock trip is unavailable on Windows
+      // and during a focus session, and a menu that changes shape is harder to
+      // learn than one where an item is visibly not available right now.
+      enabled: pal.canPlayRung(rung.key),
+      click: () => pal.playRung(rung.key),
+    })),
+  };
+}
+
 function buildPalMenu() {
   const isSleeping = pal.state === 'SLEEPING';
   const template = isSleeping
@@ -493,6 +591,8 @@ function buildPalMenu() {
         { label: 'Drink now', click: () => pal.requestReminder('water') },
         { label: 'Stretch now', click: () => pal.requestReminder('stretch') },
         { type: 'separator' },
+        playMenuItem(),
+        { type: 'separator' },
         { label: 'Go to sleep', click: () => pal.requestSleep() },
         { label: 'Settings…', click: createSettingsWindow },
       ];
@@ -501,7 +601,13 @@ function buildPalMenu() {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray.png'));
+  // The Windows tray art is 32x32, which the macOS menu bar renders at 32pt —
+  // roughly twice the height of every system item. macOS gets a 16pt icon
+  // instead; nativeImage picks up the neighbouring tray-mac@2x.png for Retina.
+  // Left in colour rather than a template image on purpose: a black silhouette
+  // loses the character, and the art is light enough to read in dark mode.
+  const iconFile = IS_MAC ? 'tray-mac.png' : 'tray.png';
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', iconFile));
   tray = new Tray(icon);
   const rebuild = () => {
     tray.setContextMenu(Menu.buildFromTemplate([
@@ -523,6 +629,7 @@ function createTray() {
         : { label: 'Start focus session', click: () => startFocusSession() },
       { label: 'Drink now', click: () => pal.requestReminder('water') },
       { label: 'Stretch now', click: () => pal.requestReminder('stretch') },
+      playMenuItem(),
       { type: 'separator' },
       switchCharacterItem(),
       { label: 'Settings…', click: createSettingsWindow },
@@ -542,15 +649,22 @@ function createTray() {
 // window title, so document names, URLs, and email subjects are never seen.
 // The name is used to pick a reaction pose and is not stored or transmitted.
 //
-// One long-lived PowerShell process is used rather than spawning one per poll
-// (a spawn every few seconds is real battery drain on a laptop) and rather than
-// a native module (keeps `npm install` free of a compile step).
+// One long-lived helper process is used rather than spawning one per poll (a
+// spawn every few seconds is real battery drain on a laptop) and rather than a
+// native module (keeps `npm install` free of a compile step). Windows uses
+// PowerShell with two user32 calls; macOS uses /bin/sh driving lsappinfo, which
+// is a Launch Services query and needs no Accessibility or Automation grant —
+// AppleScript via System Events would work too but triggers a TCC prompt.
 // ---------------------------------------------------------------------------
 const FOCUS_POLL_MS = 4000;
 // Don't react more than once per this window, so heavy alt-tabbing isn't spammy.
 const FOCUS_REACTION_COOLDOWN_MS = 45000;
 
-const MOOD_BY_APP = {
+// Windows reports a bare process name ("msedge"); macOS Launch Services reports
+// a display name ("Microsoft Edge"). The keys differ per platform for that
+// reason — reusing one table would leave the feature silently inert on macOS.
+// Both are matched lowercased (see handleFocusApp).
+const MOOD_BY_APP_WIN = {
   chrome: 'phone', msedge: 'phone', firefox: 'phone', brave: 'phone', opera: 'phone', arc: 'phone',
   code: 'crossed', cursor: 'crossed', devenv: 'crossed', idea64: 'crossed', pycharm64: 'crossed',
   webstorm64: 'crossed', sublime_text: 'crossed', 'notepad++': 'crossed',
@@ -559,6 +673,20 @@ const MOOD_BY_APP = {
   spotify: 'dance', vlc: 'dance', mpc: 'dance', musicbee: 'dance',
   explorer: 'point', notepad: 'point',
 };
+
+const MOOD_BY_APP_MAC = {
+  'google chrome': 'phone', safari: 'phone', firefox: 'phone', 'microsoft edge': 'phone',
+  'brave browser': 'phone', arc: 'phone', opera: 'phone',
+  code: 'crossed', 'visual studio code': 'crossed', cursor: 'crossed', xcode: 'crossed',
+  'intellij idea': 'crossed', pycharm: 'crossed', webstorm: 'crossed', 'sublime text': 'crossed',
+  terminal: 'crossed', iterm2: 'crossed', warp: 'crossed', ghostty: 'crossed',
+  slack: 'wave', 'microsoft teams': 'wave', discord: 'wave', 'zoom.us': 'wave',
+  'microsoft outlook': 'wave', mail: 'wave',
+  spotify: 'dance', music: 'dance', vlc: 'dance', iina: 'dance',
+  finder: 'point', notes: 'point', textedit: 'point', preview: 'point',
+};
+
+const MOOD_BY_APP = IS_MAC ? MOOD_BY_APP_MAC : MOOD_BY_APP_WIN;
 
 let focusProc = null;
 let focusPollHandle = null;
@@ -586,6 +714,20 @@ while ($true) {
 }
 `;
 
+// macOS counterpart. Blocks on stdin so it costs nothing between polls, and
+// always prints exactly one line per ping — including an empty one on failure,
+// or the caller's focusPending flag would stay set and stop all future polling.
+const FOCUS_SH = `
+while IFS= read -r _; do
+  name=""
+  asn=$(lsappinfo front 2>/dev/null)
+  if [ -n "$asn" ]; then
+    name=$(lsappinfo info -only name "$asn" 2>/dev/null | sed -n 's/.*"LSDisplayName"="\\([^"]*\\)".*/\\1/p')
+  fi
+  printf '%s\\n' "$name"
+done
+`;
+
 function handleFocusApp(app) {
   const name = (app || '').trim().toLowerCase();
   if (!name || name === lastFocusApp) return;
@@ -603,12 +745,17 @@ function handleFocusApp(app) {
 
 function startFocusWatcher() {
   if (focusProc) return;
+  // Only these two platforms have a helper; elsewhere the feature stays off
+  // rather than spawning a process that can't exist.
+  if (!IS_MAC && process.platform !== 'win32') return;
   const { spawn } = require('child_process');
   try {
-    focusProc = spawn('powershell.exe', [
-      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
-      '-EncodedCommand', Buffer.from(FOCUS_PS, 'utf16le').toString('base64'),
-    ], { windowsHide: true });
+    focusProc = IS_MAC
+      ? spawn('/bin/sh', ['-c', FOCUS_SH])
+      : spawn('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+        '-EncodedCommand', Buffer.from(FOCUS_PS, 'utf16le').toString('base64'),
+      ], { windowsHide: true });
   } catch {
     focusProc = null;
     return;
@@ -669,7 +816,45 @@ const CURSOR_IDLE_MS = 3000;
 let lastCursorPoint = null;
 let cursorIdleMs = 0;
 
-function pollCursor() {
+// Re-read the Dock's preferences. Off macOS dock.read() returns null and the
+// pal simply never learns of a Dock, which makes the Dock rung fall through.
+const DOCK_REFRESH_MS = 60 * 1000;
+
+function refreshDock() {
+  const before = dock.get();
+  dock.refresh().then((info) => {
+    if (pal) pal.setDock(info);
+    // The tray menu is a snapshot, and it only offers the Dock trip when there
+    // is a Dock. The first read arrives after the tray is already built.
+    if (tray && info && (!before || before.edge !== info.edge)) tray._rebuild();
+  }).catch(() => { /* keep the cached value */ });
+}
+
+// How close the pointer has to get to the Dock's edge to count as "you came
+// over" — roughly a Dock tile, so the hidden Dock will have slid out by then.
+const CURSOR_AT_DOCK_PX = 40;
+// getSystemIdleTime() has one-second resolution, so reading it 60x a second
+// buys nothing.
+const IDLE_SAMPLE_TICKS = 16;
+let idleSampleCountdown = 0;
+
+// True when the pointer is up against whichever edge the Dock lives on. Used to
+// infer that a hidden Dock has revealed itself, which nothing else can tell us.
+function cursorNearDock(point) {
+  const d = dock.get();
+  const b = displayBounds;
+  if (!d || !point || !b) return false;
+  if (d.edge === 'bottom') return point.y >= b.y + b.height - CURSOR_AT_DOCK_PX;
+  if (d.edge === 'left') return point.x <= b.x + CURSOR_AT_DOCK_PX;
+  if (d.edge === 'right') return point.x >= b.x + b.width - CURSOR_AT_DOCK_PX;
+  return false;
+}
+
+// Sampled every tick regardless of the follow-cursor setting: the boredom
+// ladder needs the pointer position to know whether you came over to the Dock.
+// Only the pal.updateCursor() call — the part that actually makes him chase the
+// mouse — stays behind the setting.
+function pollCursor(follow) {
   const point = screen.getCursorScreenPoint();
   const moved = !lastCursorPoint
     || Math.abs(point.x - lastCursorPoint.x) > CURSOR_MOVE_THRESHOLD_PX
@@ -677,15 +862,40 @@ function pollCursor() {
   cursorIdleMs = moved ? 0 : cursorIdleMs + TICK_MS;
   lastCursorPoint = point;
 
+  pal.setCursorAtDock(cursorNearDock(point));
+
   // Center the pal on the cursor. State clamps to the roam bounds, so a cursor
   // on another monitor can't pull the pal off-screen.
-  pal.updateCursor(point.x - PAL_W / 2, point.y - PAL_H / 2, cursorIdleMs >= CURSOR_IDLE_MS);
+  if (follow) {
+    pal.updateCursor(point.x - PAL_W / 2, point.y - PAL_H / 2, cursorIdleMs >= CURSOR_IDLE_MS);
+  }
+}
+
+// MINIME_DEBUG_LADDER=1 traces every state change with the idle clock and Dock
+// beside it. The boredom ladder is the one behaviour that only happens when
+// nobody is watching, so without this the only way to check it is to sit
+// perfectly still and hope. Silent unless asked for.
+const DEBUG_LADDER = process.env.MINIME_DEBUG_LADDER === '1';
+
+function traceState(from, to) {
+  const d = dock.get();
+  const idle = Math.round(powerMonitor.getSystemIdleTime());
+  console.log(`[ladder] ${from} -> ${to}  rung=${pal.bored} anim=${pal.animation} `
+    + `idle=${idle}s pos=(${Math.round(pal.x)},${Math.round(pal.y)}) `
+    + `dock=${d ? `${d.edge}${d.hidden ? '/hidden' : '/pinned'}` : 'none'}`);
 }
 
 function startTickLoop() {
   let lastPersistedState = null;
   tickHandle = setInterval(() => {
-    if (store.get('followCursor', false)) pollCursor();
+    pollCursor(store.get('followCursor', false));
+
+    if (--idleSampleCountdown <= 0) {
+      idleSampleCountdown = IDLE_SAMPLE_TICKS;
+      // Seconds since the last input anywhere on the system — not just in this
+      // app, which never has focus.
+      pal.setSystemIdleMs(powerMonitor.getSystemIdleTime() * 1000);
+    }
 
     pal.tick(TICK_MS);
 
@@ -704,6 +914,7 @@ function startTickLoop() {
     // electron-store writes to disk synchronously on every set — only persist
     // when the state actually changes, not 60x a second.
     if (pal.state !== lastPersistedState) {
+      if (DEBUG_LADDER) traceState(lastPersistedState, pal.state);
       lastPersistedState = pal.state;
       store.set('lastState', pal.state);
     }
@@ -800,6 +1011,12 @@ function wireIpc() {
     if (typeof patch.focusMoods === 'boolean') {
       patch.focusMoods ? startFocusWatcher() : stopFocusWatcher();
     }
+    if (typeof patch.boredomLadder === 'boolean') {
+      pal.setBoredomEnabled(patch.boredomLadder);
+    }
+    if (typeof patch.dockTrip === 'boolean') {
+      pal.setDockTripEnabled(patch.dockTrip);
+    }
     if (typeof patch.character === 'string') {
       // Settings can change the character too; keep the runtime in step with
       // the stored value (menu switching goes through setCharacter()).
@@ -829,8 +1046,12 @@ function initPal() {
     walkSpeed: cfg.walkSpeed,
     bubbleMs: cfg.bubbleMs,
     flourishes: character().flourishes,
+    boredomLadder: cfg.boredomLadder !== false,
+    dockTrip: cfg.dockTrip !== false,
   });
   pal.setFollow(!!cfg.followCursor);
+  // His chair is the focus-session work spot: one seat, not two.
+  pal.setChair(workSpot());
   if (cfg.focusMoods) startFocusWatcher();
 
   pal.on('reminderComplete', (kind) => {
@@ -843,7 +1064,10 @@ function initPal() {
   });
   // The pal ended the session itself (e.g. sent to bed mid-session).
   pal.on('focusStopped', () => stopFocusSession({ fromPal: true }));
-  pal.on('workSpotMoved', (spot) => store.set('workSpot', spot));
+  pal.on('workSpotMoved', (spot) => {
+    store.set('workSpot', spot);
+    pal.setChair(workSpot());
+  });
 
   pal.on('sleeping', () => {
     timers.pauseAll();
@@ -882,7 +1106,7 @@ function checkQuietHours() {
 
 function checkRequiredAssets() {
   const required = [
-    path.join(__dirname, 'assets', 'tray.png'),
+    path.join(__dirname, 'assets', IS_MAC ? 'tray-mac.png' : 'tray.png'),
     path.join(__dirname, 'assets', 'pal', 'stand_01.png'),
     path.join(__dirname, 'assets', 'pal', 'manifest.json'),
     path.join(__dirname, 'assets', 'hanu', 'hanu_wave_01.png'),
@@ -901,6 +1125,12 @@ function checkRequiredAssets() {
 }
 
 app.whenReady().then(() => {
+  // A desktop companion belongs in the menu bar, not the Dock or Cmd-Tab.
+  // Windows gets this from skipTaskbar on each window; macOS needs the process
+  // itself demoted to an accessory, and it must happen before any window is
+  // created. Note this is what makes the app.focus({ steal: true }) calls above
+  // necessary — accessory apps cannot raise their own windows otherwise.
+  if (IS_MAC && app.dock) app.dock.hide();
   if (!checkRequiredAssets()) {
     app.exit(1);
     return;
@@ -914,12 +1144,22 @@ app.whenReady().then(() => {
   startTickLoop();
   setInterval(checkQuietHours, 60 * 1000);
 
+  // Where the Dock is. `defaults` is a subprocess, so this is read on a slow
+  // timer rather than polled: moving the Dock is a rare, deliberate act, and
+  // the Dock trip only happens after five minutes of being ignored anyway.
+  refreshDock();
+  setInterval(refreshDock, DOCK_REFRESH_MS);
+
   screen.on('display-metrics-changed', () => {
     workArea = computeWorkArea();
     pal.setBounds(roamBounds(), houseDoor());
+    // The work spot is clamped to the roam bounds, which just changed.
+    pal.setChair(workSpot());
     if (chotuWindow) {
       chotuWindow.setBounds(chotuWindowBounds());
     }
+    // Pinning or unpinning the Dock fires this too, and changes `autohide`.
+    refreshDock();
   });
 });
 

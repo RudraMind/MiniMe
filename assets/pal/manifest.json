@@ -8,7 +8,7 @@
       "width": 98,
       "height": 221
     },
-    "area": 10616
+    "area": 11460
   },
   {
     "index": 1,
@@ -19,7 +19,7 @@
       "width": 98,
       "height": 220
     },
-    "area": 10497
+    "area": 11419
   },
   {
     "index": 2,
@@ -30,7 +30,7 @@
       "width": 107,
       "height": 219
     },
-    "area": 10368
+    "area": 11507
   },
   {
     "index": 3,
@@ -41,7 +41,7 @@
       "width": 105,
       "height": 220
     },
-    "area": 10442
+    "area": 11580
   },
   {
     "index": 4,
@@ -52,18 +52,18 @@
       "width": 103,
       "height": 221
     },
-    "area": 10429
+    "area": 11258
   },
   {
     "index": 5,
     "name": "wave_01",
     "originalBBox": {
       "x": 619,
-      "y": 77,
+      "y": 64,
       "width": 101,
-      "height": 207
+      "height": 220
     },
-    "area": 11168
+    "area": 12473
   },
   {
     "index": 6,
@@ -74,18 +74,18 @@
       "width": 94,
       "height": 219
     },
-    "area": 11144
+    "area": 12098
   },
   {
     "index": 7,
     "name": "wave_03",
     "originalBBox": {
       "x": 851,
-      "y": 94,
+      "y": 84,
       "width": 74,
-      "height": 189
+      "height": 199
     },
-    "area": 9185
+    "area": 10231
   },
   {
     "index": 8,
@@ -96,18 +96,18 @@
       "width": 89,
       "height": 216
     },
-    "area": 10702
+    "area": 11800
   },
   {
     "index": 9,
     "name": "glasses_02",
     "originalBBox": {
       "x": 1067,
-      "y": 79,
+      "y": 67,
       "width": 80,
-      "height": 205
+      "height": 217
     },
-    "area": 10746
+    "area": 11792
   },
   {
     "index": 10,
@@ -118,7 +118,7 @@
       "width": 82,
       "height": 216
     },
-    "area": 10993
+    "area": 11916
   },
   {
     "index": 11,
@@ -129,7 +129,7 @@
       "width": 86,
       "height": 221
     },
-    "area": 11870
+    "area": 12593
   },
   {
     "index": 12,
@@ -140,7 +140,7 @@
       "width": 95,
       "height": 222
     },
-    "area": 11368
+    "area": 12340
   },
   {
     "index": 13,
@@ -149,9 +149,9 @@
       "x": 126,
       "y": 380,
       "width": 116,
-      "height": 218
+      "height": 219
     },
-    "area": 10678
+    "area": 11767
   },
   {
     "index": 14,
@@ -162,7 +162,7 @@
       "width": 85,
       "height": 216
     },
-    "area": 10372
+    "area": 11272
   },
   {
     "index": 15,
@@ -173,29 +173,29 @@
       "width": 97,
       "height": 216
     },
-    "area": 10517
+    "area": 11247
   },
   {
     "index": 16,
     "name": "drink_01",
     "originalBBox": {
-      "x": 451,
+      "x": 450,
       "y": 380,
-      "width": 95,
+      "width": 96,
       "height": 215
     },
-    "area": 11586
+    "area": 12351
   },
   {
     "index": 17,
     "name": "drink_02",
     "originalBBox": {
       "x": 567,
-      "y": 383,
+      "y": 380,
       "width": 96,
-      "height": 212
+      "height": 216
     },
-    "area": 11353
+    "area": 12454
   },
   {
     "index": 18,
@@ -206,18 +206,18 @@
       "width": 101,
       "height": 214
     },
-    "area": 11067
+    "area": 12001
   },
   {
     "index": 19,
     "name": "splash_01",
     "originalBBox": {
-      "x": 832,
-      "y": 415,
-      "width": 97,
-      "height": 189
+      "x": 831,
+      "y": 397,
+      "width": 98,
+      "height": 207
     },
-    "area": 10887
+    "area": 12050
   },
   {
     "index": 20,
@@ -228,18 +228,18 @@
       "width": 89,
       "height": 202
     },
-    "area": 11432
+    "area": 11725
   },
   {
     "index": 21,
     "name": "splash_03",
     "originalBBox": {
       "x": 1056,
-      "y": 406,
+      "y": 403,
       "width": 78,
-      "height": 197
+      "height": 200
     },
-    "area": 9755
+    "area": 10545
   },
   {
     "index": 22,
@@ -250,7 +250,7 @@
       "width": 81,
       "height": 217
     },
-    "area": 9138
+    "area": 10392
   },
   {
     "index": 23,
@@ -261,7 +261,7 @@
       "width": 79,
       "height": 237
     },
-    "area": 11502
+    "area": 12362
   },
   {
     "index": 24,
@@ -272,7 +272,7 @@
       "width": 113,
       "height": 212
     },
-    "area": 10364
+    "area": 11860
   },
   {
     "index": 25,
@@ -283,18 +283,18 @@
       "width": 105,
       "height": 233
     },
-    "area": 12447
+    "area": 13730
   },
   {
     "index": 26,
     "name": "point_01",
     "originalBBox": {
       "x": 339,
-      "y": 700,
+      "y": 690,
       "width": 139,
-      "height": 222
+      "height": 232
     },
-    "area": 12790
+    "area": 14088
   },
   {
     "index": 27,
@@ -305,7 +305,7 @@
       "width": 81,
       "height": 233
     },
-    "area": 11091
+    "area": 12372
   },
   {
     "index": 28,
@@ -313,21 +313,21 @@
     "originalBBox": {
       "x": 818,
       "y": 693,
-      "width": 94,
+      "width": 96,
       "height": 230
     },
-    "area": 11473
+    "area": 13116
   },
   {
     "index": 29,
     "name": "jump_01",
     "originalBBox": {
       "x": 1016,
-      "y": 683,
-      "width": 133,
-      "height": 203
+      "y": 680,
+      "width": 157,
+      "height": 206
     },
-    "area": 10886
+    "area": 14313
   },
   {
     "index": 30,
@@ -338,6 +338,6 @@
       "width": 166,
       "height": 231
     },
-    "area": 22587
+    "area": 23744
   }
 ]

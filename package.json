@@ -1,15 +1,18 @@
 {
   "name": "mini-me",
   "version": "1.1.0",
-  "description": "A pixel-art desktop companion for Windows that walks your screen edge and nudges you to stretch and drink water.",
+  "description": "A pixel-art desktop companion for Windows and macOS that walks your screen edge and nudges you to stretch and drink water.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node test/ladder-sim.js && node test/play-sim.js",
     "slice": "node tools/slice-sheet.js",
     "placeholders": "node tools/make-placeholders.js",
     "assets": "npm run slice && npm run placeholders",
     "dist": "electron-builder --win",
-    "pack": "electron-builder --win --dir"
+    "pack": "electron-builder --win --dir",
+    "dist:mac": "electron-builder --mac",
+    "pack:mac": "electron-builder --mac --dir"
   },
   "keywords": [
     "electron",
@@ -37,7 +40,7 @@
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "electron": "^31.0.0",
+    "electron": "^44.3.0",
     "electron-builder": "^24.13.3"
   },
   "optionalDependencies": {
@@ -58,6 +61,19 @@
       ],
       "icon": "assets/icon.ico"
     },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "extendInfo": {
+        "LSUIElement": 1
+      },
+      "identity": null
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
@@ -71,6 +87,7 @@
       "state.js",
       "timers.js",
       "preload.js",
+      "dock.js",
       "renderer/**/*",
       "assets/pal/**/*",
       "assets/house/**/*",
@@ -80,11 +97,15 @@
       "assets/girl/**/*",
       "assets/boy/**/*",
       "assets/icon.ico",
+      "assets/icon.icns",
       "assets/icon.png",
       "assets/tray.png",
+      "assets/tray-mac.png",
+      "assets/tray-mac@2x.png",
       "package.json",
       "!assets/reference/**",
       "!tools/**",
+      "!test/**",
       "!dist/**",
       "!**/*.md"
     ]

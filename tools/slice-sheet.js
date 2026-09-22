@@ -15,7 +15,24 @@ try {
 const SHEET_PATH = path.join(__dirname, '..', 'assets', 'reference', 'spritesheet.png');
 const OUT_DIR = path.join(__dirname, '..', 'assets', 'pal');
 const BG = [23, 29, 38];
+// Loose distance to the backdrop colour. Needed to catch the antialiased rim
+// where the flat backdrop blends into the art; without it adjacent sprites stay
+// connected through leftover backdrop and findComponents() merges them (a plain
+// TOL of 8 yields 26 components instead of 31). See BG_CAST below for the other
+// half of the test.
 const TOL = 40;
+// Anything this close to the backdrop is backdrop, cast test or not.
+const TOL_CORE = 10;
+// The backdrop is a blue-dominant navy: b - r = +15. Raj's hair is near-black
+// but *neutral*, b - r = 0..3, and several of its tones land within TOL of the
+// backdrop. Distance alone therefore cannot tell them apart, and because the
+// hair is the outermost part of the silhouette the border flood fill walked
+// straight into it and hollowed it out — roughly a third of the hair mass was
+// being keyed away as background, leaving the transparent specks that showed
+// the desktop through his hair at runtime. Requiring the backdrop's blue cast
+// for anything outside TOL_CORE keeps neutral dark art opaque while still
+// clearing the rim, which does carry the cast because it is part backdrop.
+const BG_CAST = 6;
 // Rendered sprite size. Must match PAL_W/PAL_H in main.js and renderer/chotu.js
 // and the #pal size in renderer/chotu.css.
 const CANVAS = 72;
@@ -41,6 +58,13 @@ function bgDiff(r, g, b) {
   return Math.abs(r - BG[0]) + Math.abs(g - BG[1]) + Math.abs(b - BG[2]);
 }
 
+// Could this pixel be backdrop? Two-part test, see TOL_CORE / BG_CAST above.
+function isBgColor(r, g, b) {
+  const d = bgDiff(r, g, b);
+  if (d <= TOL_CORE) return true;
+  return d <= TOL && (b - r) >= BG_CAST;
+}
+
 // A pixel is only "true background" if it's reachable from the sheet's outer
 // border through other background-colored pixels. This keeps dark interior
 // shading (cap creases, collar shadow) opaque even when its color happens to
@@ -50,7 +74,7 @@ function computeTrueBackgroundMask(data, width, height, channels) {
   const bgCandidate = new Uint8Array(width * height);
   for (let i = 0; i < width * height; i++) {
     const o = i * channels;
-    bgCandidate[i] = bgDiff(data[o], data[o + 1], data[o + 2]) <= TOL ? 1 : 0;
+    bgCandidate[i] = isBgColor(data[o], data[o + 1], data[o + 2]) ? 1 : 0;
   }
 
   const trueBg = new Uint8Array(width * height);
@@ -131,6 +155,89 @@ function closeAlpha(opaque, w, h, r) {
   return closed;
 }
 
+// Fill transparent pixels that are trapped inside the art, i.e. unreachable
+// from the edge of the frame. Runs on the *downscaled* frame: closeAlpha above
+// operates at source resolution, and the ~3x nearest-neighbour resize that
+// follows it can reopen sub-pixel gaps that closing had already sealed. Colour
+// is grown inward from the rim one ring at a time, each pixel taking the most
+// common opaque colour among its eight neighbours — a single flat fill would
+// stamp one tone across a hole that straddles hair and skin, and averaging
+// would invent a grey that is nowhere in the palette.
+//
+// Safe to apply unconditionally here because Raj's sheet has no intentional
+// see-through space inside the silhouette; the genuine gaps (under a raised
+// arm, between his legs mid-stride) all open to the frame edge and so are
+// never reached. tools/fix-alpha-speckles.js does the same for the other
+// sheets, where the dog's leg gaps do need an area cap.
+function fillEnclosedHoles(rgba, w, h) {
+  const CUT = 16;
+  const isClear = (i) => rgba[i * 4 + 3] < CUT;
+
+  // Transparent pixels reachable from the border, 4-connected. 4- and not
+  // 8-connected so a lone diagonal pinhole cannot mark a whole pocket
+  // "outside" — that leak is why the 8-connected fill above misses these.
+  const outside = new Uint8Array(w * h);
+  const stack = [];
+  const seed = (x, y) => {
+    const i = y * w + x;
+    if (!outside[i] && isClear(i)) { outside[i] = 1; stack.push(i); }
+  };
+  for (let x = 0; x < w; x++) { seed(x, 0); seed(x, h - 1); }
+  for (let y = 0; y < h; y++) { seed(0, y); seed(w - 1, y); }
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % w, y = (i / w) | 0;
+    if (x > 0) seed(x - 1, y);
+    if (x < w - 1) seed(x + 1, y);
+    if (y > 0) seed(x, y - 1);
+    if (y < h - 1) seed(x, y + 1);
+  }
+
+  const todo = [];
+  for (let i = 0; i < w * h; i++) if (isClear(i) && !outside[i]) todo.push(i);
+  if (!todo.length) return 0;
+
+  const pending = new Uint8Array(w * h);
+  for (const i of todo) pending[i] = 1;
+  let left = todo.length;
+  while (left > 0) {
+    // Snapshot so a pass does not depend on scan order.
+    const snap = Buffer.from(rgba);
+    const writes = [];
+    for (const i of todo) {
+      if (!pending[i]) continue;
+      const x = i % w, y = (i / w) | 0;
+      const freq = new Map();
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const o = (ny * w + nx) * 4;
+          if (snap[o + 3] < CUT) continue;
+          const key = (snap[o] << 16) | (snap[o + 1] << 8) | snap[o + 2];
+          freq.set(key, (freq.get(key) || 0) + 1);
+        }
+      }
+      if (!freq.size) continue; // no opaque rim yet; a later ring reaches it
+      let best = 0, bestN = -1;
+      for (const [k, n] of freq) if (n > bestN) { bestN = n; best = k; }
+      writes.push([i, best]);
+    }
+    if (!writes.length) break; // cannot happen for enclosed pixels; don't spin
+    for (const [i, key] of writes) {
+      const o = i * 4;
+      rgba[o] = (key >> 16) & 255;
+      rgba[o + 1] = (key >> 8) & 255;
+      rgba[o + 2] = key & 255;
+      rgba[o + 3] = 255;
+      pending[i] = 0;
+      left--;
+    }
+  }
+  return todo.length - left;
+}
+
 function findComponents(trueBg, width, height) {
   const labels = new Int32Array(width * height).fill(-1);
   const components = [];
@@ -208,6 +315,7 @@ async function main() {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const manifest = [];
+  let patched = 0;
 
   for (let i = 0; i < filtered.length; i++) {
     const c = filtered[i];
@@ -244,6 +352,8 @@ async function main() {
       .raw()
       .toBuffer();
 
+    patched += fillEnclosedHoles(resizedRaw, outW, outH);
+
     const left = Math.round((CANVAS - outW) / 2);
     const top = CANVAS - outH; // bottom-aligned
 
@@ -265,6 +375,7 @@ async function main() {
 
   fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
   console.log(`Wrote ${filtered.length} frames + manifest.json to ${OUT_DIR}`);
+  console.log(`Patched ${patched} enclosed transparent pixel(s) after downscaling.`);
 }
 
 main().catch((err) => {

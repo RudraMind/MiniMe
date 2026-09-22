@@ -12,7 +12,9 @@ export const CHARACTERS = {
     dir: '../assets/pal/',
     // Which way the source art faces. The renderer mirrors from travel
     // direction, so getting this wrong makes the character moonwalk.
-    nativeFacing: 'left',
+    // Raj's sheet faces right (sunglasses and nose on the right, hair at the
+    // back on the left) — unlike Hanu, Bud and Pip, which all face left.
+    nativeFacing: 'right',
     // Raj's art is a plain shirt + trousers, so the outfit recolour applies.
     recolorable: true,
     // Idle flourishes this character can actually perform.
@@ -139,11 +141,32 @@ export function getCharacter(key) {
   return CHARACTERS[key] || CHARACTERS[DEFAULT_CHARACTER];
 }
 
+// Poses the state machine asks for that no sheet draws directly.
+//
+// The boredom ladder needs four new poses, and no character has art named for
+// any of them. Falling back to 'idle' would make all four look identical — a
+// dozing pal standing to attention. So each one names the poses that would read
+// correctly, best first, and the character takes the first it owns.
+//
+// Raj is the reason this is a table rather than one substitution: he has no
+// 'lie' and no 'sleep' art at all, so for him dozing has to be a sit, while
+// every other character can actually lie down.
+const DERIVED_POSES = {
+  doze:    ['sleep', 'lie', 'sit'],
+  inspect: ['glasses', 'crossed', 'idle'],
+  ask:     ['point', 'wave'],
+  startle: ['jump', 'wave'],
+};
+
 // Resolve an animation for a character, falling back to idle when that
 // character has no art for it (Hanu has no 'dance', for example).
 export function resolveAnimation(characterKey, name) {
   const c = getCharacter(characterKey);
-  return c.animations[name] || c.animations.idle;
+  if (c.animations[name]) return c.animations[name];
+  for (const alt of DERIVED_POSES[name] || []) {
+    if (c.animations[alt]) return c.animations[alt];
+  }
+  return c.animations.idle;
 }
 
 // Every frame file a character can display, for preloading.
