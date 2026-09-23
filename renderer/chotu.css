@@ -82,9 +82,13 @@ html, body { width: 100%; height: 100%; background: transparent; overflow: hidde
   position: absolute;
   left: 0;
   top: 0;
-  width: 24px;
-  height: 24px;
+  /* Must match the prop written by tools/build-fetch-sheet.js and BONE_W/BONE_H in
+     main.js and renderer/chotu.js. */
+  width: 22px;
+  height: 20px;
   image-rendering: pixelated;
-  pointer-events: none;
+  /* Grabbable: fetch lets you pick the bone up and throw it. It was pointer-events:
+     none while it was only ever decoration for the idle toy game. */
+  pointer-events: auto;
   -webkit-user-drag: none;
 }

@@ -13,6 +13,10 @@ const PAL_W = 72;
 const PAL_H = 72;
 const HOUSE_W = 120;
 const HOUSE_H = 120;
+// Must match the prop written by tools/build-fetch-sheet.js, the #bone size in
+// chotu.css, and BONE_W/BONE_H in main.js.
+const BONE_W = 22;
+const BONE_H = 20;
 
 // Which character is on screen, and the frame -> image-src map for it.
 let characterKey = DEFAULT_CHARACTER;
@@ -96,13 +100,20 @@ requestAnimationFrame(renderLoop);
 
 // --- hover / click-through -------------------------------------------------
 let hovering = false;
-function bboxContains(el, x, y) {
+function bboxContains(el, x, y, pad = 0) {
+  if (el.classList.contains('hidden')) return false;
   const r = el.getBoundingClientRect();
-  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
 }
 
+// The bone is small, and the window is click-through everywhere except over something
+// grabbable. Without a margin it is fiddly to pick up.
+const BONE_GRAB_PAD_PX = 8;
+
 function updateHover(e) {
-  const inside = bboxContains(palEl, e.clientX, e.clientY) || bboxContains(houseEl, e.clientX, e.clientY);
+  const inside = bboxContains(palEl, e.clientX, e.clientY)
+    || bboxContains(houseEl, e.clientX, e.clientY)
+    || bboxContains(boneEl, e.clientX, e.clientY, BONE_GRAB_PAD_PX);
   if (inside && !hovering) {
     hovering = true;
     window.pixelpal.send('hover:enter', {});
@@ -114,15 +125,21 @@ function updateHover(e) {
 
 // --- dragging --------------------------------------------------------------
 const DRAG_THRESHOLD_PX = 4;
-let dragTarget = null; // 'pal' | 'house'
+let dragTarget = null; // 'pal' | 'house' | 'bone'
 let dragStart = null;
 let dragging = false;
 let grabOffset = { x: 0, y: 0 };
 let suppressNextClick = false;
 
+function elementFor(target) {
+  if (target === 'pal') return palEl;
+  if (target === 'house') return houseEl;
+  return boneEl;
+}
+
 function beginPointerDown(target, e) {
   if (e.button !== 0) return;
-  const rect = (target === 'pal' ? palEl : houseEl).getBoundingClientRect();
+  const rect = elementFor(target).getBoundingClientRect();
   dragTarget = target;
   dragStart = { x: e.clientX, y: e.clientY };
   // Grab from wherever it was clicked so it doesn't jump to the cursor.
@@ -133,6 +150,7 @@ function beginPointerDown(target, e) {
 
 palEl.addEventListener('mousedown', (e) => beginPointerDown('pal', e));
 houseEl.addEventListener('mousedown', (e) => beginPointerDown('house', e));
+boneEl.addEventListener('mousedown', (e) => beginPointerDown('bone', e));
 
 let lastPointer = { x: 0, y: 0 };
 let dragHeartbeat = null;
@@ -152,7 +170,7 @@ document.addEventListener('mousemove', (e) => {
         clearInterval(dragHeartbeat);
         dragHeartbeat = setInterval(() => {
           if (!dragging || !lastDragPos) return;
-          window.pixelpal.send(dragTarget === 'pal' ? 'pal:drag' : 'house:drag', lastDragPos);
+          window.pixelpal.send(`${dragTarget}:drag`, lastDragPos);
         }, 400);
       }
     }
@@ -163,10 +181,11 @@ document.addEventListener('mousemove', (e) => {
       if (dragTarget === 'pal') {
         window.pixelpal.send('pal:drag', { x, y });
       } else {
-        // Move the house immediately for responsiveness; main persists on drop.
-        houseEl.style.left = `${x}px`;
-        houseEl.style.top = `${y}px`;
-        window.pixelpal.send('house:drag', { x, y });
+        // Move it immediately for responsiveness; main persists on drop.
+        const el = elementFor(dragTarget);
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        window.pixelpal.send(`${dragTarget}:drag`, { x, y });
       }
       return; // don't let hover tracking make the window click-through mid-drag
     }
@@ -178,7 +197,7 @@ function finishDrag() {
   clearInterval(dragHeartbeat);
   dragHeartbeat = null;
   if (dragging) {
-    window.pixelpal.send(dragTarget === 'pal' ? 'pal:dragend' : 'house:dragend', {});
+    window.pixelpal.send(`${dragTarget}:dragend`, {});
     // 'mouseup' fires before 'click', so flag it here or the drop would also
     // register as a click and trigger a wave.
     suppressNextClick = true;
@@ -240,10 +259,16 @@ window.pixelpal.on('pal:state', (s) => {
     bubbleEl.classList.add('hidden');
   }
 
-  // The toy sits where the game started; the character bounces around it.
-  if (s.playAnchor) {
-    boneEl.style.left = `${s.playAnchor.x + PAL_W / 2 - 12}px`;
-    boneEl.style.top = `${s.playAnchor.y + PAL_H - 20}px`;
+  // The bone. Two sources: the idle toy game drops it where the game started, and
+  // fetch keeps a real position for it that you can drag. It is hidden while carried,
+  // because the carry and hold poses have the bone painted into them — drawing the prop
+  // as well would give him two.
+  const boneAt = s.boneCarried ? null : (s.bone || (s.playAnchor
+    ? { x: s.playAnchor.x + PAL_W / 2 - BONE_W / 2, y: s.playAnchor.y + PAL_H - BONE_H }
+    : null));
+  if (boneAt && characterKey === 'dog') {
+    boneEl.style.left = `${boneAt.x}px`;
+    boneEl.style.top = `${boneAt.y}px`;
     boneEl.classList.remove('hidden');
   } else {
     boneEl.classList.add('hidden');

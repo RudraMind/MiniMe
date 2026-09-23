@@ -89,6 +89,18 @@ const SHEETS = {
       'girl_wave_01', 'girl_stretch_01', 'girl_walk_03', 'girl_sleep_01',
     ],
   },
+  // A second sheet for the dog, holding the fetch poses. It writes into assets/dog/
+  // alongside the first sheet's frames, which is what `outKey` is for: the spec key has
+  // to be unique, the output directory and the facing table entry do not.
+  dogfetch: {
+    sheet: 'dogfetchsheet.png',
+    rows: 2,
+    outKey: 'dog',
+    names: [
+      'dog_carry_01', 'dog_carry_02',
+      'dog_pickup_01', 'dog_hold_01',
+    ],
+  },
   dog: {
     sheet: 'dogsheet.png',
     rows: 3,
@@ -287,9 +299,12 @@ function closeAlpha(opaque, w, h, r) {
 
 async function sliceOne(key, spec) {
   const sheetPath = path.join(ROOT, 'assets', 'reference', spec.sheet);
-  const outDir = path.join(ROOT, 'assets', key);
+  // A character can be spread over more than one sheet, so the spec key is not always
+  // the character. Frames and facings both belong to the character.
+  const character = spec.outKey || key;
+  const outDir = path.join(ROOT, 'assets', character);
   const expected = spec.names.length;
-  const flips = flipSet(key);
+  const flips = flipSet(character);
 
   const { data, info } = await sharp(sheetPath).raw().toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
@@ -416,7 +431,7 @@ async function sliceOne(key, spec) {
   }
 
   fs.writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
-  console.log(`[${key}] ${figures.length} frames -> assets/${key}/  `
+  console.log(`[${key}] ${figures.length} frames -> assets/${character}/  `
     + `(smallest kept ${smallestKept.area}px, largest rejected ${rejected ? rejected.area : 0}px)`);
 }
 

@@ -108,7 +108,9 @@ async function main() {
     hanu: ['hanu_drink_01', 'hanu_run_02', 'hanu_sit_01', 'hanu_walk_02'],
     boy: ['boy_run_02', 'boy_sit_01', 'boy_stretch_01', 'boy_walk_02', 'boy_walk_03'],
     girl: ['girl_run_02', 'girl_sit_01', 'girl_stretch_01', 'girl_walk_02', 'girl_walk_03'],
-    dog: ['dog_drink_01', 'dog_walk_01', 'dog_wave_02'],
+    // dog_pickup_01 comes from the fetch sheet and is drawn facing left, so it is
+    // mirrored like any other against-the-grain pose.
+    dog: ['dog_drink_01', 'dog_pickup_01', 'dog_walk_01', 'dog_wave_02'],
   };
   for (const [key, frames] of Object.entries(expected)) {
     const got = [...flipSet(key)].sort();

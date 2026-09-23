@@ -154,6 +154,15 @@ const FACING = {
       dog_sit_02: 'front',
       dog_sleep_01: 'front',
       dog_lie_01: 'front',
+
+      // Fetch poses, from the second dog sheet. See tools/build-fetch-sheet.js.
+      dog_carry_01: 'right',
+      dog_carry_02: 'right',
+      // Head down at the bone. Drawn facing left, which is fine — it is recorded here
+      // and the slicer mirrors it, the same as any other against-the-grain pose.
+      dog_pickup_01: 'left',
+      // Sitting square to the viewer with the bone in its mouth: no facing.
+      dog_hold_01: 'front',
     },
   },
 };

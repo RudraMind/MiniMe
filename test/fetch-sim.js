@@ -117,6 +117,14 @@ function main() {
       d.boneCarried === false && d.bone !== null, `carried=${d.boneCarried}`);
   }
 
+  // 7b. Restoring a saved bone position on startup must not send him chasing it. Only
+  // a throw starts a fetch.
+  const restored = make();
+  restored.placeBone({ x: 1200, y: 100 });
+  check('placing the bone does not start a fetch', restored.state === STATES.IDLE, restored.state);
+  check('placing the bone still records where it is',
+    restored.bone !== null && restored.bone.x === 1200, restored.bone && restored.bone.x);
+
   // 8. The renderer draws the bone from the snapshot, so the snapshot has to carry it.
   const snapDog = atState(STATES.FETCH_CARRY);
   const snap = snapDog.serialize();

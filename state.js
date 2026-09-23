@@ -287,6 +287,15 @@ class PalState extends EventEmitter {
   }
 
   // Where he sits when he gives up on you: the focus-session work spot.
+  // Put the bone somewhere without making anything of it: restoring a saved position on
+  // startup, for instance. A fetch starts only when you throw it.
+  placeBone(pos) {
+    if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') return false;
+    this.bone = { x: pos.x, y: pos.y };
+    this.boneCarried = false;
+    return true;
+  }
+
   // The bone has been dropped somewhere. For the dog that starts a fetch; for every
   // other character it only records where the bone now lies.
   throwBone(pos) {

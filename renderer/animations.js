@@ -133,6 +133,14 @@ CHARACTERS.dog = {
     // run cycle so play doesn't just look like running.
     play:    { frames: ['dog_run_02', 'dog_run_01', 'dog_run_03', 'dog_run_01'], ms: 130, loop: true },
     drink:   { frames: ['dog_drink_01'], ms: 900, loop: true },
+    // Fetch. The carry cycle is a trot rather than a run: out fast, back slower, which
+    // is what makes the return leg read as carrying something.
+    carry:   { frames: ['dog_carry_01', 'dog_carry_02'], ms: 180, loop: true },
+    // One beat, head down over the bone. Not looped: the state machine holds it for a
+    // fixed time and then moves on.
+    pickup:  { frames: ['dog_pickup_01'], ms: 350, loop: false },
+    // Sitting over the bone with it in his mouth, staring at you, waiting for the throw.
+    hold:    { frames: ['dog_hold_01'], ms: 1200, loop: true },
     sit:     { frames: ['dog_sit_02'], ms: 2000, loop: false },
     lie:     { frames: ['dog_lie_01'], ms: 2500, loop: false },
     sleep:   { frames: ['dog_sleep_01'], ms: 2000, loop: false },

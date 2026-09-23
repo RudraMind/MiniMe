@@ -13,6 +13,10 @@ const HOUSE_W = 120;
 const HOUSE_H = 120;
 const PAL_W = 72;
 const PAL_H = 72;
+// Must match the bone prop written by tools/build-fetch-sheet.js and the #bone size in
+// renderer/chotu.css.
+const BONE_W = 22;
+const BONE_H = 20;
 const TICK_MS = 16;
 
 // Platform branches are kept inline rather than in a separate module: there are
@@ -36,6 +40,9 @@ const store = new Store({
     // null = park the house in the default top-right corner; once dragged, this
     // holds { x, y } in screen coordinates.
     housePos: null,
+    // Where the dog's bone lies, in screen coordinates. null = park it beside the
+    // house on first run, so the game starts with the bone somewhere sensible.
+    bonePos: null,
     followCursor: false,
     focusMoods: false,
     // Escalating boredom: fidget, sulk, patrol the Dock, doze off.
@@ -203,6 +210,33 @@ function housePosition() {
     x: Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - HOUSE_W),
     y: Math.min(Math.max(y, workArea.y), workArea.y + workArea.height - HOUSE_H),
   };
+}
+
+// Where the bone lies, defaulting to the ground just left of the house door so it is
+// visible and reachable on a first run. Held in memory while being dragged, for the
+// same reason the house is: electron-store writes synchronously, and persisting on
+// every mousemove would stall the 16ms tick.
+let liveBonePos = null;
+
+function bonePosition() {
+  const stored = liveBonePos || store.get('bonePos', null);
+  if (stored && typeof stored.x === 'number' && typeof stored.y === 'number') {
+    return {
+      x: Math.min(Math.max(stored.x, workArea.x), workArea.x + workArea.width - BONE_W),
+      y: Math.min(Math.max(stored.y, workArea.y), workArea.y + workArea.height - BONE_H),
+    };
+  }
+  const door = houseDoor();
+  return {
+    x: Math.max(door.x - 90, workArea.x),
+    y: Math.min(door.y + PAL_H - BONE_H, workArea.y + workArea.height - BONE_H),
+  };
+}
+
+function commitBonePos() {
+  if (!liveBonePos) return;
+  store.set('bonePos', liveBonePos);
+  liveBonePos = null;
 }
 
 // Persist a dragged house position exactly once, when the drag ends.
@@ -903,6 +937,15 @@ function traceFacing(s) {
     + `x=${Math.round(s.x)} moved=${travel.toFixed(1)}(${travelWord}) `
     + `facing=${s.facing > 0 ? 'right' : 'left'}`);
 
+  // One shot of the whole window, so props drawn away from the pal — the bone, the
+  // house — can be checked too. The cropped shots below follow the pal and would never
+  // include them.
+  if (facingShots === 1 && chotuWindow && !chotuWindow.isDestroyed()) {
+    chotuWindow.webContents.capturePage()
+      .then((img) => fs.writeFileSync('/tmp/minime-window.png', img.toPNG()))
+      .catch(() => {});
+  }
+
   // Photograph the sprite as the screen actually shows it. A facing bug cannot be
   // diagnosed from state alone: the numbers can be right while the pixels are
   // wrong, and the reverse. Cropped to the pal so the shot is small.
@@ -951,6 +994,9 @@ function startTickLoop() {
     s.houseY = h.y - workArea.y;
     if (s.playAnchor) {
       s.playAnchor = { x: s.playAnchor.x - workArea.x, y: s.playAnchor.y - workArea.y };
+    }
+    if (s.bone) {
+      s.bone = { x: s.bone.x - workArea.x, y: s.bone.y - workArea.y };
     }
     sendTo(chotuWindow, 'pal:state', s);
     if (DEBUG_FACING) traceFacing(s);
@@ -1029,6 +1075,26 @@ function wireIpc() {
     commitHousePos();
   });
 
+  // Dragging the bone only moves it. Nothing is chased until it is let go, so you can
+  // reposition it without the dog snapping at your cursor the whole way.
+  ipcMain.on('bone:drag', (_e, { x, y }) => {
+    if (typeof x !== 'number' || typeof y !== 'number' || Number.isNaN(x) || Number.isNaN(y)) return;
+    liveBonePos = {
+      x: Math.min(Math.max(x + workArea.x, workArea.x), workArea.x + workArea.width - BONE_W),
+      y: Math.min(Math.max(y + workArea.y, workArea.y), workArea.y + workArea.height - BONE_H),
+    };
+    pal.placeBone(liveBonePos);
+    armDragWatchdog();
+  });
+
+  // Let go: that is the throw.
+  ipcMain.on('bone:dragend', () => {
+    clearDragWatchdog();
+    const where = bonePosition();
+    commitBonePos();
+    pal.throwBone(where);
+  });
+
   ipcMain.on('pal:click', (_e, { button, target }) => {
     if (target === 'house' && button === 'right') {
       buildHouseMenu().popup({ window: chotuWindow });
@@ -1065,6 +1131,7 @@ function wireIpc() {
       // Settings can change the character too; keep the runtime in step with
       // the stored value (menu switching goes through setCharacter()).
       pal.cfg.flourishes = character().flourishes;
+      pal.cfg.character = characterKey();
       if (tray) {
         tray.setToolTip(palName());
         tray._rebuild();
@@ -1092,8 +1159,13 @@ function initPal() {
     flourishes: character().flourishes,
     boredomLadder: cfg.boredomLadder !== false,
     dockTrip: cfg.dockTrip !== false,
+    // Fetch is the dog's game; the state machine needs to know who is on screen.
+    character: characterKey(),
   });
   pal.setFollow(!!cfg.followCursor);
+  // Restore the bone where it was left. placeBone rather than throwBone: reopening the
+  // app must not send him chasing it.
+  pal.placeBone(bonePosition());
   // His chair is the focus-session work spot: one seat, not two.
   pal.setChair(workSpot());
   if (cfg.focusMoods) startFocusWatcher();
