@@ -16,6 +16,11 @@ const STATES = Object.freeze({
   WORKING: 'WORKING', // sitting at the work spot during a focus session
   BREAK: 'BREAK',     // stretching between focus sessions
   PLAYING: 'PLAYING', // bouncing around a dropped toy (the dog's idle game)
+  // Fetch, dog only. See docs/superpowers/specs/2026-09-22-dog-fetch-design.md.
+  FETCH_RUN: 'FETCH_RUN',       // sprinting out to the bone you just threw
+  FETCH_PICKUP: 'FETCH_PICKUP', // one beat head-down over the bone
+  FETCH_CARRY: 'FETCH_CARRY',   // trotting it back to your cursor
+  FETCH_HOLD: 'FETCH_HOLD',     // dropped it at your feet, sitting and staring
   // Boredom ladder, in the order it escalates. See BOREDOM_RUNGS.
   SULKING: 'SULKING',             // sat down in his chair, given up on you
   ASKING_CURSOR: 'ASKING_CURSOR', // at a hidden Dock, asking for your mouse
@@ -40,6 +45,19 @@ const DRAG_HOLD_MS = 8000;
 // Only flip the sprite when there's meaningful horizontal travel. The art has
 // no up/down poses, so near-vertical movement must not cause facing flicker.
 const FACING_EPSILON_PX = 1.5;
+
+// Fetch. Out fast, back slower — the asymmetry is what reads as carrying something.
+const FETCH_RUN_FACTOR = 1.9;
+const FETCH_CARRY_FACTOR = 0.85;
+// Long enough to register as a deliberate beat, short enough not to feel like a stall.
+const FETCH_PICKUP_MS = 350;
+// How long he sits staring before giving up and going back to wandering.
+const FETCH_HOLD_MS = 6000;
+// The tease: sometimes he stops just short of you and makes you wait for it. This is
+// the bit dog owners recognise, so it is deliberate rather than a glitch.
+const FETCH_TEASE_CHANCE = 0.2;
+const FETCH_TEASE_GAP_PX = 60;
+const FETCH_TEASE_MS = 900;
 
 // Idle play: short hops around a toy dropped where the game started.
 const PLAY_RADIUS_PX = 70;
@@ -173,6 +191,9 @@ class PalState extends EventEmitter {
       flourishes: cfg.flourishes ?? FLOURISH_WEIGHTS,
       boredomLadder: cfg.boredomLadder ?? true,
       dockTrip: cfg.dockTrip ?? true,
+      // Which character is on screen. Fetch is the dog's game: it is the only one
+      // with art for carrying a bone, so the others ignore the bone entirely.
+      character: cfg.character ?? 'raj',
     };
 
     this.state = STATES.IDLE;
@@ -197,6 +218,19 @@ class PalState extends EventEmitter {
     this._followEnabled = false;
     this._cursorTarget = null; // { x, y }
     this._cursorIdle = false;
+
+    // Where the bone lies, and whether it is in his mouth rather than on the floor.
+    // Public because the renderer draws the bone from it and the carry frames already
+    // have the bone painted in, so the prop is hidden while carried.
+    this.bone = null;
+    this.boneCarried = false;
+    this._fetchHome = null;
+    // Whether the current fetch included a tease. Public so it can be observed after a
+    // run without reaching into the tick loop.
+    this.teasedThisFetch = false;
+    this._teasePending = false;
+    this._teasePause = 0;
+    this._carryDest = null;
 
     this._dragging = false;
     this._dragHoldMs = 0;
@@ -253,6 +287,72 @@ class PalState extends EventEmitter {
   }
 
   // Where he sits when he gives up on you: the focus-session work spot.
+  // The bone has been dropped somewhere. For the dog that starts a fetch; for every
+  // other character it only records where the bone now lies.
+  throwBone(pos) {
+    if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') return false;
+    this.bone = { x: pos.x, y: pos.y };
+    this.boneCarried = false;
+    this.teasedThisFetch = false;
+    this._teasePending = false;
+    this._teasePause = 0;
+    if (this.cfg.character !== 'dog') return false;
+    // Where to bring it back to if the cursor position is not known: the spot he was
+    // standing when it was thrown, which is near enough to you to read as delivery.
+    this._fetchHome = { x: this.x, y: this.y };
+    const target = this._clamp(this.bone.x, this.bone.y);
+    this.state = STATES.FETCH_RUN;
+    this.animation = 'run';
+    this.targetX = target.x;
+    this.targetY = target.y;
+    return true;
+  }
+
+  // Something more important came up. Anything carrying the bone must put it down
+  // where it stands, or the bone would ride along invisibly inside a pose that has no
+  // bone drawn in it, and reappear somewhere it was never dropped.
+  _abandonFetch() {
+    if (!this.boneCarried) return;
+    this.boneCarried = false;
+    this.bone = { x: this.x, y: this.y };
+  }
+
+  // Bone in mouth, heading for you. Your cursor if it is known, otherwise the spot he
+  // set off from.
+  _beginCarry() {
+    this.boneCarried = true;
+    this.state = STATES.FETCH_CARRY;
+    this.animation = 'carry';
+    const home = this._cursorTarget || this._fetchHome || { x: this.x, y: this.y };
+    const dest = this._clamp(home.x, home.y);
+    this._carryDest = dest;
+
+    // Stop short only if there is room to: from close by there is nothing to stop
+    // short of, and he would just appear to stall on the spot.
+    const dist = Math.hypot(dest.x - this.x, dest.y - this.y);
+    this._teasePending = Math.random() < FETCH_TEASE_CHANCE && dist > FETCH_TEASE_GAP_PX * 1.5;
+    this.teasedThisFetch = this._teasePending;
+
+    if (this._teasePending) {
+      const k = (dist - FETCH_TEASE_GAP_PX) / dist;
+      const short = this._clamp(this.x + (dest.x - this.x) * k, this.y + (dest.y - this.y) * k);
+      this.targetX = short.x;
+      this.targetY = short.y;
+    } else {
+      this.targetX = dest.x;
+      this.targetY = dest.y;
+    }
+  }
+
+  // Arrived. The bone is left exactly where he is standing, which is at your cursor.
+  _dropBone() {
+    this.boneCarried = false;
+    this.bone = { x: this.x, y: this.y };
+    this.state = STATES.FETCH_HOLD;
+    this.animation = 'hold';
+    this._phaseTimer = FETCH_HOLD_MS;
+  }
+
   setChair(spot) {
     this._chair = spot && typeof spot.x === 'number' ? { x: spot.x, y: spot.y } : null;
   }
@@ -540,6 +640,11 @@ class PalState extends EventEmitter {
       || this.state === STATES.FOLLOWING
       || this.state === STATES.RESTING
       || this.state === STATES.PLAYING
+      // Fetch is a game, and a game must never swallow a health reminder.
+      || this.state === STATES.FETCH_RUN
+      || this.state === STATES.FETCH_PICKUP
+      || this.state === STATES.FETCH_CARRY
+      || this.state === STATES.FETCH_HOLD
       || this.state === STATES.SULKING
       || this.state === STATES.ASKING_CURSOR
       || this.state === STATES.PATROLLING
@@ -550,6 +655,7 @@ class PalState extends EventEmitter {
       return false;
     }
     // He has a job now, so he is no longer being ignored.
+    this._abandonFetch();
     this._resetLadder(false);
     this._pendingReminder = kind;
     this._flourish = null;
@@ -998,6 +1104,61 @@ class PalState extends EventEmitter {
         break;
       }
 
+      // Sprint out to the bone. Faster than the walk back, which is what a real dog
+      // does and what makes the return leg read as carrying something.
+      case STATES.FETCH_RUN: {
+        if (this._moveToward(this.targetX, this.targetY, this.cfg.walkSpeed * FETCH_RUN_FACTOR, dtMs)) {
+          this.state = STATES.FETCH_PICKUP;
+          this.animation = 'pickup';
+          this._phaseTimer = FETCH_PICKUP_MS;
+        }
+        break;
+      }
+
+      // One beat over the bone, then it is his and he turns for you.
+      case STATES.FETCH_PICKUP: {
+        this._phaseTimer -= dtMs;
+        if (this._phaseTimer <= 0) this._beginCarry();
+        break;
+      }
+
+      // Carry it back. The bone rides with him, so anything drawing it follows the
+      // dog rather than the spot it was thrown to.
+      case STATES.FETCH_CARRY: {
+        // Holding still mid-carry: the tease. He has the bone, he is near you, and he
+        // is not handing it over yet.
+        if (this._teasePause > 0) {
+          this._teasePause -= dtMs;
+          this.bone = { x: this.x, y: this.y };
+          if (this._teasePause <= 0) {
+            this.animation = 'carry';
+            this.targetX = this._carryDest.x;
+            this.targetY = this._carryDest.y;
+          }
+          break;
+        }
+        const arrived = this._moveToward(this.targetX, this.targetY, this.cfg.walkSpeed * FETCH_CARRY_FACTOR, dtMs);
+        this.bone = { x: this.x, y: this.y };
+        if (arrived) {
+          if (this._teasePending) {
+            this._teasePending = false;
+            this._teasePause = FETCH_TEASE_MS;
+            this.animation = 'hold';
+          } else {
+            this._dropBone();
+          }
+        }
+        break;
+      }
+
+      // Sitting over the bone, waiting for you to throw it again. The bone stays where
+      // he put it when he gives up, so the next throw starts from your feet.
+      case STATES.FETCH_HOLD: {
+        this._phaseTimer -= dtMs;
+        if (this._phaseTimer <= 0) this._arriveIdle();
+        break;
+      }
+
       case STATES.WORKING:
         // Sits still and works. Wandering, flourishes, and follow are all
         // suppressed — that's the entire point of a focus session.
@@ -1159,6 +1320,10 @@ class PalState extends EventEmitter {
       bubbleText: this.bubbleText,
       houseState: this.houseState,
       playAnchor: this._playAnchor,
+      // The renderer draws the bone from here. While it is carried the carry poses
+      // already have a bone painted in, so the prop is hidden rather than positioned.
+      bone: this.bone,
+      boneCarried: this.boneCarried,
     };
   }
 }
