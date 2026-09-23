@@ -1037,6 +1037,9 @@ function wireIpc() {
       dragWatchdog = null;
       pal.endDrag();
       commitHousePos();
+      // A bone drag that goes quiet is an abandoned drag, not a throw: keep the bone
+      // where it was left, and do not send him after it.
+      commitBonePos();
     }, 2000);
   };
 

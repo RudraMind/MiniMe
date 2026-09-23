@@ -160,6 +160,26 @@ function main() {
   check('he teases you sometimes', teased > 0, `${teased}/${TRIALS}`);
   check('the tease rate is about one in five', rate > 0.08 && rate < 0.34, rate.toFixed(3));
 
+  // 11. Every channel the renderer sends must be allowed by preload.js. It drops unknown
+  // channels silently, with no error anywhere, so a missing entry looks exactly like a
+  // feature that does nothing. That is how the bone first shipped undraggable: it moved
+  // on screen, because the renderer repositions the element itself, and snapped back on
+  // release because main never heard about the drag at all.
+  const fs = require('fs');
+  const path = require('path');
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8');
+  const allowed = new Set([...preload.matchAll(/'([a-z]+:[a-zA-Z]+)'/g)].map((m) => m[1]));
+  const rendererSrc = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'chotu.js'), 'utf8');
+  const sent = new Set();
+  for (const m of rendererSrc.matchAll(/pixelpal\.send\(\s*'([a-z]+:[a-zA-Z]+)'/g)) sent.add(m[1]);
+  // Template-literal channels, e.g. `${dragTarget}:drag`, with the targets enumerated.
+  for (const m of rendererSrc.matchAll(/pixelpal\.send\(`\$\{(\w+)\}:(\w+)`/g)) {
+    for (const target of ['pal', 'house', 'bone']) sent.add(`${target}:${m[2]}`);
+  }
+  const missing = [...sent].filter((c) => !allowed.has(c)).sort();
+  check('every channel the renderer sends is allowed by preload', missing.length === 0,
+    missing.join(', ') || `${sent.size} channels checked`);
+
   console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);
   process.exit(failures === 0 ? 0 : 1);
 }
