@@ -401,10 +401,11 @@ every false failure while building the ladder: sampling at 45s when the whole
 patrol takes ~22s finds him back in his chair and looks like a bug. Use an
 `until(pred, cap)` helper.
 
-Two harnesses live in `test/`, 59 assertions between them, all passing:
+Four harnesses live in `test/`, 298 assertions between them, all passing:
 
 ```bash
-npm test          # test/ladder-sim.js (30) then test/play-sim.js (29)
+npm test          # test/ladder-sim.js (30), then test/play-sim.js (29),
+                  # test/facing-sim.js (205), then test/fetch-sim.js (34)
 ```
 
 - `test/ladder-sim.js` — escalation: every rung in order, reminders winning,
@@ -413,6 +414,10 @@ npm test          # test/ladder-sim.js (30) then test/play-sim.js (29)
 - `test/play-sim.js` — the Play menu, **with the mouse held active throughout**,
   which is what actually happens when someone clicks a menu item to watch it, and
   the case that broke twice.
+- `test/facing-sim.js` — sprite mirroring: every frame a character plays has to face
+  the same way, asserted against `tools/frame-facing.js` rather than against pixels.
+- `test/fetch-sim.js` — the dog's fetch loop: run to the thrown bone, pick it up,
+  carry it back to the cursor, drop it, then sit and stare until it's thrown again.
 
 Two Electron probes are there too, for the questions a headless harness cannot
 answer (they print, they don't assert):
@@ -455,4 +460,4 @@ Hit in practice within minutes of the ladder going live:
 Neither of the first two prints anything without `MINIME_DEBUG_LADDER=1`, which is
 why they're worth writing down.
 
-Last verified against the tree on 2026-09-11.
+Last verified against the tree on 2026-09-23.

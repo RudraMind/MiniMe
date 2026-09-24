@@ -125,14 +125,17 @@ recolour would misfire on.
 
 ### `dog` — "Scout" — the odd one out
 
-`assets/dog/` · faces right · not recolourable · 12 files, **11 used**
+`assets/dog/` · faces right · not recolourable · 16 files, **15 used**
 
 ```
 idle  dog_sit_01                      wave    dog_wave_01,02
 walk  dog_walk_02, dog_run_03,        stretch dog_run_01,02
       dog_walk_02, dog_run_02 (170ms) jump    dog_run_02
 run   dog_run_01,02,03                drink   dog_drink_01
-play  dog_run_02,01,03,01 (130ms)     sit     dog_sit_02
+play  dog_run_02,01,03,01 (130ms)     carry   dog_carry_01,02 (180ms)
+                                      pickup  dog_pickup_01
+                                      hold    dog_hold_01
+                                      sit     dog_sit_02
                                       lie     dog_lie_01
                                       sleep   dog_sleep_01
 ```
@@ -395,4 +398,4 @@ Expected today: **no missing files anywhere**, and exactly one unused file —
 To regenerate the resolution matrix, call `resolveAnimation(key, pose)` for each
 character over the pose list in that table.
 
-Last verified against the tree on 2026-09-11.
+Last verified against the tree on 2026-09-23.

@@ -1,5 +1,11 @@
 # Build log 2 — session of 2026-09-22
 
+**Addendum, 2026-09-23.** The three files recorded below as uncommitted — `main.js`,
+`preload.js`, `test/fetch-sim.js` — are now committed, the working tree is clean, and
+`fix/per-frame-facing` is 7 commits ahead of `origin/main`. The `docs/design-swarms/*.jsonl`
+transcripts referenced later in this file were removed before publication. Everything
+after this note is the record as written on 2026-09-22 and has been left unchanged.
+
 Handoff record. Written so a fresh terminal can pick this up without re-deriving anything.
 Everything here was verified against the files on disk at the time of writing, not recalled.
 

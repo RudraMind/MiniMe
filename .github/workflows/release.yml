@@ -44,3 +44,51 @@ jobs:
         with:
           files: dist/*.exe
           generate_release_notes: true
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS disk image and zip
+        # Both architectures are built explicitly: macos-latest runners are
+        # Apple Silicon, so without --x64 an Intel Mac gets nothing.
+        #
+        # The build is deliberately unsigned. package.json sets
+        # "identity": null, and CSC_IDENTITY_AUTO_DISCOVERY=false stops
+        # electron-builder looking for a certificate that is not there.
+        # Consequence, stated plainly: Gatekeeper will not accept these
+        # artifacts, so the README tells macOS users how to open them.
+        # Signing and notarising needs a paid Apple Developer account.
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run dist:mac -- --arm64 --x64 --publish never
+
+      - name: Upload macOS builds as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiniMe-macOS
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+
+      - name: Attach macOS builds to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.zip
+          generate_release_notes: true

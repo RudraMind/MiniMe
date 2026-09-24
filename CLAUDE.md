@@ -36,12 +36,13 @@ icon or `pgrep -f "electron \."`.
 Useful while developing:
 
 ```bash
-npm test                                              # 59 assertions, ~2s, no Electron
+npm test                                              # 298 assertions, ~2s, no Electron
 MINIME_BOREDOM_SCALE=0.1 MINIME_DEBUG_LADDER=1 npm start
 ```
 
-`npm test` runs the two behaviour harnesses in `test/` against `state.js`
-directly. **Run it after any change to `state.js`** — it catches the things that
+`npm test` runs the four behaviour harnesses in `test/` against `state.js`
+directly — `ladder-sim` (30 assertions), `play-sim` (29), `facing-sim` (205),
+`fetch-sim` (34). **Run it after any change to `state.js`** — it catches the things that
 are otherwise invisible until someone sits still for 15 minutes.
 
 The env vars run the boredom ladder 10× faster and trace every state change.
@@ -79,16 +80,18 @@ filename.**
 
 ## House rules for this project
 
-- **Everything stays local.** File findings as docs inside this folder. Do **not**
-  open public GitHub issues or push anything upstream.
+- **The repo is public** at https://github.com/RudraMind/MiniMe. File findings as docs
+  inside this folder, and land work by following the runbook in `GIT-COMMANDS.md`. Do
+  **not** push, tag or release anything unless the owner asks for it.
 - **`MACOS-PORT.md` Part 5, Issues 1–5 are report-only.** Those reminder/config
   bugs were deliberately left unfixed. Do not fix them without asking first.
-- **Nothing in the current working tree is committed** (~64 changed files:
-  the macOS port, the cosmetic fixes, the boredom ladder). Commit only when asked.
+- **The working tree is clean.** Everything — the macOS port, the cosmetic fixes, the
+  boredom ladder, the dog fetch feature — is committed, and the branch
+  `fix/per-frame-facing` sits 7 commits ahead of `origin/main`. Commit only when asked.
 - **Windows must not regress.** This is a cross-platform app being developed on a
   Mac. Platform branches are kept inline next to the Windows behaviour they diverge
   from, on purpose.
 - Plain, concrete language in replies. No `file.js:123` citations, no
   architecture/cost abstractions — describe what the user would see happen.
 
-Last updated 2026-09-11.
+Last updated 2026-09-23.

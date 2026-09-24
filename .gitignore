@@ -9,6 +9,16 @@ test_*.png
 *.log
 npm-debug.log*
 
+# Raw agent-swarm transcripts from the design sessions. Kept locally for
+# reference; they carry absolute machine paths and internal run identifiers,
+# so they are deliberately not published.
+docs/design-swarms/
+
+# A browsable spare copy of every sprite, carried alongside the handoff folder.
+# The real art is tracked under assets/; this is a duplicate and committing it
+# would double the repository for no gain.
+_ART-REFERENCE/
+
 .DS_Store
 Thumbs.db
 .vscode/

@@ -1,6 +1,6 @@
 # Dog fetch — design
 
-Status: designed, not built. Awaiting approval.
+Status: built, tested and committed. `test/fetch-sim.js` passes all 34 checks.
 Date: 2026-09-22.
 
 The design record: what it does, the reasoning, what was rejected and why, and

@@ -351,7 +351,8 @@ verify the seams rather than waiting 15 minutes:
 ### What was actually verified
 
 **Headless, 59 assertions across two harnesses, all passing.** `PalState` was
-driven with a fake system-idle clock — no Electron, no waiting.
+driven with a fake system-idle clock — no Electron, no waiting. (Those are this
+spec's own two harnesses; the full suite is now 298 assertions across four.)
 
 The ladder harness (30) covers all seven checks above plus: the hidden-Dock ask
 and its 20s give-up, both feature switches, switching the ladder off mid-patrol,
@@ -367,8 +368,8 @@ chair starting on the spot, the grace window, input after the grace, escalating
 onward from a played rung, clicking him as the way out (including mid-ask), a
 reminder still winning, and every reason a rung is unavailable.
 
-Both harnesses live outside the repo. Their failures divided into two kinds,
-worth separating because only one kind was a bug:
+Both harnesses are tracked in the repo, under `test/`. Their failures divided
+into two kinds, worth separating because only one kind was a bug:
 
 - **The harness's own timings, twice.** 45 seconds is long enough for the entire
   patrol to finish, so it sampled him back in his chair and called it a bug. Any
